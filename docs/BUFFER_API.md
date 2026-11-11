@@ -52,15 +52,17 @@ invalid input) is recorded in the account's action log instead of being lost.
 - HTTP 401, or `UNAUTHENTICATED` / `UNAUTHORIZED` in the body: the account must reconnect; checks stop.
 - HTTP 429 or `RATE_LIMIT_EXCEEDED`: the next check is scheduled after Buffer's `Retry-After`.
 - Any other GraphQL error: retried at the next check, five minutes later.
-- The `RateLimit` headers are read on every response and shown on the board.
+- The `RateLimit` header is read on every response. Buffer sends one member per window (`"15m"; r=87; t=650, "24h"; r=262; ...`); Still True keeps the window with the fewest requests left.
 
 ## Request budget
 
 App Clients get 100 requests per 15 minutes and 500 per day, plus 10 and 25 per authorised user. Still
 True is built to stay far inside that:
 
-- One check costs one `Account` and one `Queue` request per organisation. `Channels` is cached for an hour
-  and the tags are looked up once.
+- One check costs one `Account` and one `Queue` request per organisation. `Channels` is cached for an hour,
+  or until the organisation's channel count changes, and the tags are looked up once.
+- Checks on one account run one at a time, so the first check after connecting and a check asked for
+  meanwhile never write the same hold or note twice.
 - Checks run on each account's own Durable Object alarm: a sweep every three hours (every thirty minutes
   when a post is due within three hours), and a re-check 60 and 10 minutes before each post. A queue of
   ten posts a day costs about 40 to 60 requests a day.

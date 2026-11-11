@@ -6,7 +6,7 @@
   <a href="https://github.com/Marc-Dvci/Still-True/actions/workflows/tests.yml"><img alt="tests" src="https://github.com/Marc-Dvci/Still-True/actions/workflows/tests.yml/badge.svg"></a>
   <a href="https://github.com/Marc-Dvci/Still-True/actions/workflows/live.yml"><img alt="live" src="https://github.com/Marc-Dvci/Still-True/actions/workflows/live.yml/badge.svg"></a>
   <a href="https://github.com/Marc-Dvci/Still-True/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://github.com/Marc-Dvci/Still-True/actions/workflows/codeql.yml/badge.svg"></a>
-  <img alt="tests" src="https://img.shields.io/badge/tests-225_passing-111111">
+  <img alt="tests" src="https://img.shields.io/badge/tests-230_passing-111111">
   <img alt="decision core coverage" src="https://img.shields.io/badge/decision_core-99.4%25_lines_·_85.0%25_branches-111111">
   <a href="LICENSE"><img alt="MIT licence" src="https://img.shields.io/badge/licence-MIT-111111"></a>
 </p>
@@ -116,7 +116,7 @@ Every operation is validated against [`schema/buffer.graphql`](schema/buffer.gra
 | Real markup | Prices, stock and event status read correctly from Shopify, WooCommerce, Wix and ticketing-site markup, including a malformed JSON-LD block and an event postponed only in its title | [`test/unit/page.test.ts`](test/unit/page.test.ts) |
 | Real days | The five drills above, on the recorded GDACS, Wikipedia and Open-Meteo data | [`test/unit/drill.test.ts`](test/unit/drill.test.ts) |
 | Buffer contract | 13 operations valid against the introspected schema | [`test/unit/operations.test.ts`](test/unit/operations.test.ts) |
-| Tests | 169 unit · 44 Worker and Durable Object tests in workerd · 12 browser tests with axe-core (WCAG 2.2 AA, desktop and mobile). Decision core coverage: 99.4 % of lines, 85.0 % of branches | `npm test`, `npm run test:unit`, `npm run test:e2e` |
+| Tests | 170 unit · 48 Worker and Durable Object tests in workerd · 12 browser tests with axe-core (WCAG 2.2 AA, desktop and mobile). Decision core coverage: 99.4 % of lines, 85.5 % of branches | `npm test`, `npm run test:unit`, `npm run test:e2e` |
 
 > [!IMPORTANT]
 > What is real: the disaster alerts, news items and weather in the fire drill are the records GDACS, Wikipedia and Open-Meteo published for those days, and the page fixtures reproduce the markup of real Shopify, WooCommerce, Wix and ticketing pages. Atelier Nord and Salle Rivage are the demo shop and venue Still True serves itself, so the sample drafts have pages to link to.
@@ -129,6 +129,10 @@ Every operation is validated against [`schema/buffer.graphql`](schema/buffer.gra
 | Every edit sends the post's text, which Buffer requires | [`test/worker/org.test.ts`](test/worker/org.test.ts) "sends the post's text with every edit, as Buffer requires" |
 | The note never claims a hold that Buffer refused | [`test/worker/org.test.ts`](test/worker/org.test.ts) "says 'flagged', not 'moved to drafts', when Buffer refuses the hold" |
 | A post is held and noted once, not on every check | [`test/worker/org.test.ts`](test/worker/org.test.ts) "does not hold again a post it already explained" |
+| Two checks at once (the first check after connecting, then "Add sample drafts") hold and note a post once | [`test/worker/org.test.ts`](test/worker/org.test.ts) "runs one check at a time: two at once hold and note a post once" |
+| A held post deleted in Buffer leaves the board; one still in drafts stays | [`test/worker/org.test.ts`](test/worker/org.test.ts) "forgets a held post once it is deleted in Buffer, and keeps one that is still a draft" |
+| A channel connected in Buffer is listed at the next check | [`test/worker/org.test.ts`](test/worker/org.test.ts) "lists a channel connected in Buffer at the next check, not an hour later" |
+| Buffer's `RateLimit` header is read per window, keeping the tightest | [`test/worker/primitives.test.ts`](test/worker/primitives.test.ts) "reads Buffer's RateLimit headers and keeps the window with the fewest requests left" |
 | Notes-only mode never changes a post | [`test/worker/org.test.ts`](test/worker/org.test.ts) "only writes notes in 'notes' mode, and never holds" |
 | Release restores the original time and removes the held tag | [`test/worker/org.test.ts`](test/worker/org.test.ts) "releases a held post at its original time and drops the held tag" |
 | An expired token is refreshed once and Buffer's replacement kept | [`test/worker/org.test.ts`](test/worker/org.test.ts) "refreshes an expired token once and keeps Buffer's replacement" |

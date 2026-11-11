@@ -66,6 +66,34 @@ describe("weather check", () => {
     expect(f?.fix).toMatchObject({ kind: "reschedule", dueAt: "2026-06-15T09:00:00.000Z" });
   });
 
+  it("words the hour from what the source has: a forecast's probability, or an archive's millimetres", () => {
+    const [forecast] = run("Terrace open this afternoon ☀️", {
+      ...dry,
+      precipProbability: 90,
+      weatherCode: 63,
+    });
+    expect(forecast?.detail).toBe('"Terrace" goes out into rain (rain 90 %).');
+    expect(forecast?.evidence[0]?.value).toBe("rain, rain 90 %, cloud 20 %, 21 °C");
+
+    // The historical archive has no rain probability: the measured amount is given instead, never "?".
+    const archive = { ...dry, precipProbability: null, precipitationMm: 0.1, weatherCode: 51 };
+    const [recorded] = run("☀️ La terrasse est ouverte", archive);
+    expect(recorded?.detail).toBe('"terrasse" goes out into light drizzle (0.1 mm of rain).');
+    expect(recorded?.evidence[0]?.value).toBe("light drizzle, 0.1 mm of rain, cloud 20 %, 21 °C");
+
+    const bare = {
+      ...dry,
+      precipProbability: null,
+      precipitationMm: null,
+      cloudCover: null,
+      weatherCode: 61,
+    };
+    const [unknown] = run("Picnic in the park today", bare);
+    expect(unknown?.detail).toBe('"Picnic" goes out into light rain.');
+    expect(unknown?.evidence[0]?.value).toBe("light rain, 21 °C");
+    expect(JSON.stringify([forecast, recorded, unknown])).not.toContain("?");
+  });
+
   it("flags at 60 % rain and not at 59 %", () => {
     expect(codes(run("Picnic in the park today", { ...dry, precipProbability: 60 }))).toEqual([
       "weather_contradiction",
