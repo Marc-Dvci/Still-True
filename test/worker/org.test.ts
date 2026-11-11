@@ -211,6 +211,47 @@ describe("tokens, the action log and disconnecting", () => {
     expect(board.posts).toHaveLength(1);
   });
 
+  it("forgets a held post once it is deleted in Buffer, and keeps one that is still a draft", async () => {
+    const fake = fakeBuffer([
+      bufferPost("p-kept", `Back in stock ${demo("/demo/shop/linen-shirt")}`, inAnHour()),
+      bufferPost("p-gone", `Back in stock again ${demo("/demo/shop/linen-shirt")}`, inAnHour()),
+    ]);
+    vi.stubGlobal("fetch", fake.fetch);
+    const org = account("held-gone-1");
+    await org.connectAccount({ id: "acc1", name: "Test shop", timezone: "Europe/Paris" }, tokens());
+    expect((await org.checkNow()).posts.filter((p) => p.status === "held")).toHaveLength(2);
+
+    // Both held posts leave the queue window; one is deleted in Buffer, the other stays a draft there.
+    const kept = { ...fake.posts[0], status: "draft" };
+    fake.posts.splice(0, 2);
+    const queueAnswer = fake.fetch;
+    fake.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const body = typeof init?.body === "string" ? init.body : "";
+      if (body.includes("query Post(") && body.includes("p-kept")) {
+        return Response.json({ data: { post: kept } });
+      }
+      return queueAnswer(input, init);
+    }) as typeof fetch;
+    vi.stubGlobal("fetch", fake.fetch);
+
+    const board = await org.checkNow();
+    expect(board.posts.map((p) => p.id)).toEqual(["p-kept"]);
+    expect(board.ledger.find((e) => e.event === "forgotten")?.postId).toBe("p-gone");
+  });
+
+  it("lists a channel connected in Buffer at the next check, not an hour later", async () => {
+    const fake = fakeBuffer([]);
+    vi.stubGlobal("fetch", fake.fetch);
+    const org = account("channels-1");
+    await org.connectAccount({ id: "acc1", name: "Test shop", timezone: "Europe/Paris" }, tokens());
+    expect((await org.checkNow()).channels.map((c) => c.id)).toEqual(["ch1"]);
+    await org.checkNow();
+    expect(fake.calls.filter((c) => c.operation === "Channels")).toHaveLength(1);
+    fake.channelCount = 2;
+    expect((await org.checkNow()).channels.map((c) => c.id)).toEqual(["ch1", "ch2"]);
+    expect(fake.calls.filter((c) => c.operation === "Channels")).toHaveLength(2);
+  });
+
   it("creates the five sample drafts as drafts", async () => {
     const fake = fakeBuffer([]);
     vi.stubGlobal("fetch", fake.fetch);

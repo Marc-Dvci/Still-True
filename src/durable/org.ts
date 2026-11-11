@@ -4,6 +4,7 @@
 // each post is due.
 import { DurableObject } from "cloudflare:workers";
 import {
+  BufferApiError,
   BufferAuthError,
   BufferClient,
   BufferRateLimitError,
@@ -122,6 +123,8 @@ const NEAR_SWEEP_MS = 30 * 60 * 1000;
 const HORIZON_MS = 7 * 86_400_000;
 const MIN_GAP_MS = 60_000;
 const MAX_PAGE_FETCHES = 25;
+/** Held posts outside the queue window looked up one by one in Buffer, per check. */
+const MAX_HELD_LOOKUPS = 10;
 
 export class OrgDO extends DurableObject<Env> {
   private sql: SqlStorage;
@@ -360,7 +363,7 @@ export class OrgDO extends DurableObject<Env> {
     const seen = new Set<string>();
 
     for (const org of live.organizations) {
-      const channels = await this.channels(client, org.id);
+      const channels = await this.channels(client, org);
       const posts = await this.queue(client, org.id, startedAt);
       const heldTag = await this.ensureTag(client, org.id, HELD_TAG);
       const reviewTag = await this.ensureTag(client, org.id, REVIEW_TAG);
@@ -436,13 +439,22 @@ export class OrgDO extends DurableObject<Env> {
       }
     }
 
-    // Rows for posts no longer scheduled (published, deleted, moved out of the horizon) are dropped
-    // unless Still True is holding them.
+    // Rows for posts no longer scheduled (published, deleted, moved out of the horizon) are dropped.
+    // A held post can fall out of the horizon while it waits, so Buffer is asked about it directly: the
+    // row stays only while the post is still a draft there.
     const known = this.sql
       .exec<{ post_id: string; held_at: string | null }>("SELECT post_id, held_at FROM posts")
       .toArray();
+    let heldLookups = 0;
     for (const { post_id, held_at } of known) {
-      if (!seen.has(post_id) && !held_at) this.sql.exec("DELETE FROM posts WHERE post_id = ?", post_id);
+      if (seen.has(post_id)) continue;
+      if (held_at) {
+        if (heldLookups >= MAX_HELD_LOOKUPS) continue; // Asked about at a later check.
+        heldLookups += 1;
+        if (await this.stillDraftInBuffer(client, post_id)) continue;
+        await this.appendLedger(post_id, "forgotten", "The held post is no longer a draft in Buffer");
+      }
+      this.sql.exec("DELETE FROM posts WHERE post_id = ?", post_id);
     }
 
     this.put("lastCycle", {
@@ -453,12 +465,26 @@ export class OrgDO extends DurableObject<Env> {
     await this.scheduleNext();
   }
 
-  private async channels(client: BufferClient, organizationId: string): Promise<Map<string, Channel>> {
-    const cacheKey = `channels:${organizationId}`;
+  /** True while Buffer still has the post as a draft; false once it was deleted, sent or rescheduled. */
+  private async stillDraftInBuffer(client: BufferClient, postId: string): Promise<boolean> {
+    try {
+      const { post } = await client.request<{ post: { status: string } | null }>(POST, { id: postId });
+      return post?.status === "draft";
+    } catch (error) {
+      if (error instanceof BufferApiError && error.code === "NOT_FOUND") return false;
+      throw error;
+    }
+  }
+
+  /** Channels change rarely: cached for an hour, or until the organisation's channel count changes. */
+  private async channels(client: BufferClient, org: Organization): Promise<Map<string, Channel>> {
+    const cacheKey = `channels:${org.id}`;
     const cached = this.get<{ at: number; channels: Channel[] }>(cacheKey);
-    let channels = cached && this.now() - cached.at < 60 * 60_000 ? cached.channels : null;
+    const fresh =
+      cached && this.now() - cached.at < 60 * 60_000 && cached.channels.length === org.channelCount;
+    let channels = fresh ? cached.channels : null;
     if (!channels) {
-      const data = await client.request<{ channels: Channel[] }>(CHANNELS, { organizationId });
+      const data = await client.request<{ channels: Channel[] }>(CHANNELS, { organizationId: org.id });
       channels = data.channels;
       this.put(cacheKey, { at: this.now(), channels });
     }

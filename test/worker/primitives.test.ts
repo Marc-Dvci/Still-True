@@ -34,7 +34,10 @@ describe("token encryption", () => {
     const sealed = await seal(key, "refresh-token", "account-1");
     expect(await open(key, sealed, "account-1")).toBe("refresh-token");
     await expect(open(key, sealed, "account-2")).rejects.toThrow();
-    await expect(open(key, sealed.slice(0, -2) + "AA", "account-1")).rejects.toThrow();
+    // Change one full character inside the ciphertext (the last one also carries unused padding bits).
+    const at = sealed.length - 10;
+    const tampered = sealed.slice(0, at) + (sealed[at] === "A" ? "B" : "A") + sealed.slice(at + 1);
+    await expect(open(key, tampered, "account-1")).rejects.toThrow();
     await expect(open(key, "garbage", "account-1")).rejects.toThrow();
   });
 

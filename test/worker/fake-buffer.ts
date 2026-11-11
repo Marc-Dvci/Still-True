@@ -9,6 +9,8 @@ export interface FakeBuffer {
   calls: Call[];
   tokenRequests: URLSearchParams[];
   posts: Record<string, unknown>[];
+  /** Channels connected in the organisation; change it to simulate connecting one in Buffer. */
+  channelCount: number;
   fetch: typeof fetch;
 }
 
@@ -45,6 +47,7 @@ export function fakeBuffer(
     calls,
     tokenRequests,
     posts,
+    channelCount: 1,
     fetch: (async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
       if (url.startsWith("https://auth.buffer.com/")) {
@@ -65,6 +68,19 @@ export function fakeBuffer(
         };
         const operation = /(?:query|mutation)\s+(\w+)/.exec(query)?.[1] ?? "unknown";
         calls.push({ operation, variables });
+        // Recorded from api.buffer.com (11 Nov 2026): a post that does not exist is a GraphQL error.
+        if (operation === "Post" && !fake.posts.some((p) => p.id === variables.id)) {
+          return Response.json({
+            errors: [
+              {
+                message: `Post not found for id: ${String(variables.id)}`,
+                path: ["post"],
+                extensions: { code: "NOT_FOUND" },
+              },
+            ],
+            data: null,
+          });
+        }
         const data = answer(operation, variables, fake, options);
         return Response.json({ data }, { headers: { RateLimit: "limit=100, remaining=90, reset=600" } });
       }
@@ -110,24 +126,24 @@ function answer(
           id: "acc1",
           name: "Test shop",
           timezone: "Europe/Paris",
-          organizations: [{ id: "org1", name: "Shop", channelCount: 1, limits: { scheduledPosts: 10 } }],
+          organizations: [
+            { id: "org1", name: "Shop", channelCount: fake.channelCount, limits: { scheduledPosts: 10 } },
+          ],
         },
       };
     case "Channels":
       return {
-        channels: [
-          {
-            id: "ch1",
-            name: "shop.bsky.social",
-            displayName: "Shop",
-            service: "bluesky",
-            avatar: "",
-            timezone: "Europe/Paris",
-            isDisconnected: false,
-            isQueuePaused: false,
-            isLocked: false,
-          },
-        ],
+        channels: Array.from({ length: fake.channelCount }, (_, i) => ({
+          id: `ch${i + 1}`,
+          name: i === 0 ? "shop.bsky.social" : `channel-${i + 1}`,
+          displayName: i === 0 ? "Shop" : `Channel ${i + 1}`,
+          service: "bluesky",
+          avatar: "",
+          timezone: "Europe/Paris",
+          isDisconnected: false,
+          isQueuePaused: false,
+          isLocked: false,
+        })),
       };
     case "Queue":
       return {
@@ -137,7 +153,7 @@ function answer(
         },
       };
     case "Post":
-      return { post: fake.posts.find((p) => p.id === variables.id) ?? fake.posts[0] };
+      return { post: fake.posts.find((p) => p.id === variables.id) };
     case "Tags":
       return { tagsV2: { edges: [] } };
     case "CreateTag":

@@ -92,7 +92,7 @@ app.get("/auth/callback", async (c) => {
       tokens,
     );
     c.header("Set-Cookie", await sessionCookie(c.env.SESSION_SECRET, account.id), { append: true });
-    return c.redirect("/board");
+    return c.redirect("/board?connected=1");
   } catch (err) {
     const message = err instanceof OAuthError ? err.message : "Buffer could not complete the connection.";
     console.error(JSON.stringify({ event: "oauth_failed", message: (err as Error).message }));
@@ -123,7 +123,7 @@ app.get("/dev/connect", async (c) => {
     },
   );
   c.header("Set-Cookie", await sessionCookie(c.env.SESSION_SECRET, account.id));
-  return c.redirect("/board");
+  return c.redirect("/board?connected=1");
 });
 
 app.post("/auth/logout", async (c) => {

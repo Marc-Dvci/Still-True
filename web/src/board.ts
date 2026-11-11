@@ -290,4 +290,19 @@ $("logout").addEventListener("click", async () => {
 
 renderScenarioPicker($("my-scenarios"), $("my-drill"), api.runMyDrill).catch(() => undefined);
 await refresh();
+// Connecting starts a check in the background a moment later: show its result (and the channel list)
+// as soon as it lands instead of at the next minute.
+const justConnected = new URLSearchParams(location.search).has("connected");
+if (justConnected) history.replaceState(null, "", location.pathname + location.hash);
+const lastCheck = (): string | null => state?.budget.lastCycleAt ?? null;
+const checkedBefore = lastCheck();
+const checkPending = (): boolean =>
+  state !== null &&
+  (!state.budget.lastCycleAt || (justConnected && state.budget.lastCycleAt === checkedBefore));
+if (checkPending()) $("clock").classList.add("fast");
+for (let tries = 0; tries < 15 && checkPending(); tries++) {
+  await new Promise((resolve) => window.setTimeout(resolve, 2_000));
+  await refresh();
+}
+$("clock").classList.remove("fast");
 window.setInterval(() => void refresh(false), 60_000);
