@@ -54,7 +54,7 @@ export function calendarFindings(post: PostUnderCheck, ctx: CheckContext): Findi
       code: "weekday_date_mismatch",
       verdict: "review",
       title: "Weekday and date disagree",
-      detail: `"${date.text}": ${formatLocalDate(date.key)} ${date.key.slice(0, 4)} is a ${weekdayName(actual, "en")}.`,
+      detail: `"${date.text}": ${formatLocalDate(date.key).replace(/^\S+ /, "")} ${date.key.slice(0, 4)} is a ${weekdayName(actual, "en")}, not a ${weekdayName(date.weekday.value, "en")}.`,
       evidence: [{ label: "Calendar", value: `${date.key} is a ${weekdayName(actual, "en")}` }, goesOut],
       spans: [[date.start, date.end]],
       fix: {

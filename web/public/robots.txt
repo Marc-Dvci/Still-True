@@ -1,0 +1,4 @@
+User-agent: *
+Disallow: /board
+Disallow: /api/
+Disallow: /demo/

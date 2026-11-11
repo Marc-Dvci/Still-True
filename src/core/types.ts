@@ -73,6 +73,8 @@ export interface WeatherAtDue {
   cloudCover: number | null;
   snowfallCm: number | null;
   time?: string | null;
+  /** The next dry, bright daytime hour in the forecast, used to propose a new slot. */
+  nextFair?: string | null;
 }
 
 export type HazardType = "EQ" | "TC" | "FL" | "VO" | "DR" | "WF";

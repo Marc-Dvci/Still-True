@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Your queue · Still True</title>
+    <meta name="robots" content="noindex" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="top">
+      <div class="wrap">
+        <a class="mark" href="/"><span class="clock" aria-hidden="true" id="clock"></span>Still True</a>
+        <nav aria-label="Main">
+          <a href="/board" aria-current="page">Your queue</a>
+          <a href="/drill">Fire drill</a>
+          <button class="linkish hide-sm" type="button" id="open-settings">Settings</button>
+          <button class="linkish" type="button" id="logout">Sign out</button>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main" class="wrap">
+      <div class="statusline" aria-live="polite">
+        <strong id="account-name">Loading your queue…</strong>
+        <span class="counts" id="counts"></span>
+        <span class="spacer"></span>
+        <span class="muted" id="cycle"></span>
+        <button class="btn small" type="button" id="check-now">Check now</button>
+      </div>
+
+      <div class="panel" id="settings" hidden>
+        <h2>Settings</h2>
+        <div class="field">
+          <label for="country">Audience country</label>
+          <select id="country"></select>
+          <span class="hint">Remembrance days, disaster alerts and news are matched to this country.</span>
+        </div>
+        <div class="field">
+          <label for="place">Business location, for the weather check</label>
+          <input id="place" type="search" placeholder="Start typing a city" autocomplete="off" list="place-results" />
+          <datalist id="place-results"></datalist>
+          <span class="hint" id="place-current">No location set: the weather check is off.</span>
+        </div>
+        <fieldset class="field">
+          <legend><strong>When a problem is certain</strong></legend>
+          <label class="choice"><input type="radio" name="policy" value="hold" /> Hold the post: move it to drafts and add a note</label>
+          <label class="choice"><input type="radio" name="policy" value="notes" /> Only add a note, never change a post</label>
+        </fieldset>
+        <div class="actions">
+          <button class="btn small" type="button" id="save-settings">Save</button>
+          <button class="btn small danger" type="button" id="disconnect">Disconnect and delete my data</button>
+        </div>
+      </div>
+
+      <div id="board" aria-live="polite"></div>
+
+      <section aria-labelledby="samples-title" id="samples">
+        <h2 id="samples-title">See every check on your own account</h2>
+        <p class="lede">Add five sample drafts to one of your channels. Each one contains a problem a check should find. They are drafts: they never publish.</p>
+        <div class="choices">
+          <select id="sample-channel" aria-label="Channel for the sample drafts"></select>
+          <button class="btn small ghost" type="button" id="add-samples">Add sample drafts</button>
+        </div>
+      </section>
+
+      <section aria-labelledby="mydrill-title">
+        <h2 id="mydrill-title">Fire drill on your queue</h2>
+        <p class="lede">Replay your queue, at the same times of day, on a real day the world changed.</p>
+        <ul class="scenarios" id="my-scenarios"></ul>
+        <div id="my-drill" aria-live="polite"></div>
+      </section>
+
+      <section aria-labelledby="ledger-title">
+        <h2 id="ledger-title">What Still True did</h2>
+        <ol class="steps" id="ledger"></ol>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        <span>Still True is built on the Buffer API. It is not an official Buffer product.</span>
+        <a href="/about#sources">Data sources</a>
+        <a href="/privacy">Privacy</a>
+      </div>
+    </footer>
+    <script type="module" src="/src/board.ts"></script>
+  </body>
+</html>

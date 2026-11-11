@@ -8,8 +8,19 @@
     "directory": "./dist/web",
     "binding": "ASSETS",
     "not_found_handling": "404-page",
-    "run_worker_first": ["/api/*", "/auth/*"]
+    "run_worker_first": ["/api/*", "/auth/*", "/demo/*", "/mcp"]
   },
   "ai": { "binding": "AI" },
+  "durable_objects": {
+    "bindings": [
+      { "name": "ORG", "class_name": "OrgDO" },
+      { "name": "WORLD", "class_name": "WorldDO" }
+    ]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["OrgDO", "WorldDO"] }],
+  "vars": {
+    "PUBLIC_ORIGIN": "https://still-true.chatisthisreal.workers.dev",
+    "BUFFER_REDIRECT_URI": "https://still-true.chatisthisreal.workers.dev/auth/callback"
+  },
   "observability": { "enabled": true }
 }

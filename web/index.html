@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Still True · the last look before every scheduled post goes out</title>
+    <meta name="description" content="Still True re-reads your Buffer queue against the calendar, your own pages, the weather, remembrance days and the news, and holds the posts the world has made wrong." />
+    <meta property="og:title" content="Still True · the last look before every scheduled post goes out" />
+    <meta property="og:description" content="Re-checks every scheduled Buffer post against the world just before it goes out. Holds are reversible and explained inside Buffer." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://still-true.chatisthisreal.workers.dev/" />
+    <meta property="og:image" content="https://still-true.chatisthisreal.workers.dev/og-card.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="top">
+      <div class="wrap">
+        <a class="mark" href="/"><span class="clock" aria-hidden="true"></span>Still True</a>
+        <nav aria-label="Main">
+          <a href="/drill">Fire drill</a>
+          <a class="hide-sm" href="/about">How it works</a>
+          <a class="hide-sm" href="/privacy">Privacy</a>
+          <a class="btn small" href="/auth/login" data-connect>Connect Buffer</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+      <div class="wrap">
+        <div class="hero">
+          <p class="eyebrow">Built on the Buffer API</p>
+          <h1>The last look before every post goes out</h1>
+          <p class="lede">
+            A scheduled post is a promise written on Monday about Friday. Still True re-reads your Buffer queue against the
+            calendar, your own pages, the weather, remembrance days and the news, and holds the posts the world has made
+            wrong. Every hold is reversible and explained inside Buffer.
+          </p>
+          <p class="notice" id="error" hidden></p>
+          <div class="actions">
+            <a class="btn" href="/auth/login" data-connect>Connect Buffer</a>
+            <a class="btn ghost" href="/drill">Run a fire drill, no sign-in</a>
+          </div>
+        </div>
+      </div>
+
+      <section aria-labelledby="board-title">
+        <div class="wrap">
+          <p class="eyebrow" id="board-caption">A small business's day of posts, replayed on a real day</p>
+          <h2 id="board-title">Departures</h2>
+          <div id="hero-board" aria-live="polite"></div>
+          <p class="muted" id="hero-source"></p>
+        </div>
+      </section>
+
+      <section aria-labelledby="checks-title">
+        <div class="wrap">
+          <h2 id="checks-title">Five things that change after you hit schedule</h2>
+          <div class="checks">
+            <article>
+              <h3>The calendar</h3>
+              <p>Weekdays that do not match their date, "tomorrow" that now means another day, a time or a date already passed, "good morning" at 20:30.</p>
+              <p class="example"><q>Join us Friday 14 November</q>: 14 November 2026 is a Saturday.</p>
+            </article>
+            <article>
+              <h3>Your own pages</h3>
+              <p>The product page, the shop and the ticketing page are the source of truth. Still True reads their structured data: price, stock, event date and status.</p>
+              <p class="example"><q>Back in stock, €49</q> while the page says out of stock.</p>
+            </article>
+            <article>
+              <h3>The weather</h3>
+              <p>Sunshine and outdoor plans against the forecast for the hour the post goes out, with the next dry slot proposed.</p>
+              <p class="example"><q>Terrace open this afternoon ☀️</q> into 90 % rain.</p>
+            </article>
+            <article>
+              <h3>Remembrance days</h3>
+              <p>National days of mourning and remembrance in your audience's country, from a sourced calendar of 31 days in 17 countries.</p>
+              <p class="example"><q>Friday 13th flash sale</q> in Paris on 13 November.</p>
+            </article>
+            <article>
+              <h3>The world</h3>
+              <p>Red and orange GDACS disaster alerts and Wikipedia's Current Events, matched to the audience's country and to the words in the post.</p>
+              <p class="example"><q>Our prices are on fire 🔥</q> the day a wildfire alert hits.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="how-title">
+        <div class="wrap">
+          <h2 id="how-title">What happens when the world moved</h2>
+          <ol class="steps">
+            <li><div><strong>Re-checked on time.</strong> Every scheduled post is read again 60 and 10 minutes before it goes out, and every few hours before that.</div></li>
+            <li><div><strong>Held, never deleted.</strong> High-confidence problems (sold out, cancelled, a date already passed, wording that echoes an active disaster) move the post to drafts in Buffer. Everything else gets a note.</div></li>
+            <li><div><strong>Explained inside Buffer.</strong> A note on the post and a tag say what changed and where it was read, so the team sees it in Buffer itself.</div></li>
+            <li><div><strong>One tap to fix or release.</strong> A corrected price, the right weekday or the next dry slot is proposed. Release puts the post back at its original time.</div></li>
+          </ol>
+        </div>
+      </section>
+
+      <section aria-labelledby="api-title">
+        <div class="wrap">
+          <h2 id="api-title">How it uses Buffer</h2>
+          <table class="api-table">
+            <thead><tr><th scope="col">Need</th><th scope="col">Buffer API</th></tr></thead>
+            <tbody>
+              <tr><td>Connect any Buffer account</td><td>OAuth 2.0 Authorization Code with PKCE, rotating refresh tokens</td></tr>
+              <tr><td>Read the queue cheaply</td><td><code>posts</code> filtered by status and a due-time window, one query per organisation per check</td></tr>
+              <tr><td>Local day and hour</td><td><code>channels</code>: timezone, service, queue state</td></tr>
+              <tr><td>Hold without deleting</td><td><code>editPost(saveToDraft: true)</code>; release with <code>editPost(mode: customScheduled, dueAt)</code></td></tr>
+              <tr><td>Explain inside Buffer</td><td><code>createCollaborationNote</code> on the post, and <code>createTag</code> / <code>tagIds</code></td></tr>
+              <tr><td>Apply a fix</td><td><code>editPost(text)</code> or a new <code>dueAt</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        <span>Still True is built on the Buffer API. It is not an official Buffer product.</span>
+        <a href="/about#sources">Data sources</a>
+        <a href="/privacy">Privacy</a>
+        <a href="https://github.com/Marc-Dvci/Still-True">Source code</a>
+      </div>
+    </footer>
+    <script type="module" src="/src/landing.ts"></script>
+  </body>
+</html>

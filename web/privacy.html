@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Privacy · Still True</title>
+    <meta name="description" content="What Still True reads from Buffer, what it writes, what it stores and for how long." />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="top">
+      <div class="wrap">
+        <a class="mark" href="/"><span class="clock" aria-hidden="true"></span>Still True</a>
+        <nav aria-label="Main">
+          <a href="/drill">Fire drill</a>
+          <a href="/about">How it works</a>
+          <a href="/privacy" aria-current="page">Privacy</a>
+        </nav>
+      </div>
+    </header>
+    <main id="main" class="wrap">
+      <article class="prose">
+        <p class="eyebrow">Last updated 11 November 2026</p>
+        <h1>Privacy</h1>
+        <p>
+          Still True is an independent app built on the Buffer API by Marc Donovici. It is not an official Buffer product.
+          It reads your Buffer queue to check scheduled posts against the world, and keeps only what that check needs.
+        </p>
+
+        <h2>What it reads from Buffer</h2>
+        <ul>
+          <li>Your Buffer account id, name and timezone, and your organisations.</li>
+          <li>Your channels: name, network, timezone and avatar.</li>
+          <li>Scheduled posts, and drafts that have a due time, for the next seven days: text, due time, creation time, channel, tags and link fields.</li>
+        </ul>
+        <p>Buffer asks you to approve these permissions when you connect: <code>account:read</code>, <code>posts:read</code>, <code>posts:write</code>, notes and <code>offline_access</code>.</p>
+
+        <h2>What it writes to Buffer</h2>
+        <ul>
+          <li>When a problem is certain and your setting is "Hold", it moves the post to drafts. It never deletes a post.</li>
+          <li>It adds a note to a flagged post saying what changed and where it was read, and one of two tags: "Still True: held" or "Still True: review".</li>
+          <li>When you press Release, it schedules the post again. When you press Apply fix, it changes the post's text or time as shown.</li>
+          <li>When you press "Add sample drafts", it creates five drafts on the channel you choose. Drafts do not publish.</li>
+        </ul>
+
+        <h2>What it stores, and for how long</h2>
+        <ul>
+          <li>Your Buffer access and refresh tokens, encrypted with AES-GCM, in a storage space that belongs to your account alone (a Cloudflare Durable Object).</li>
+          <li>Your settings: audience country, business location if you set one, and the hold policy.</li>
+          <li>For each post in the next seven days: its text, links, due times, verdict and findings. A post is removed from storage once it leaves the queue, unless Still True is holding it.</li>
+          <li>The facts read from linked pages (status, price, stock, event date) for a few hours, and a log of the actions Still True took.</li>
+        </ul>
+        <p><strong>Disconnect and delete my data</strong> (in Settings) revokes the token at Buffer and erases everything above. Removing the app in Buffer's settings also stops all access.</p>
+
+        <h2>Who else is contacted</h2>
+        <ul>
+          <li>The pages linked in your posts, fetched with a "StillTrue" user agent to read their price, stock or event date.</li>
+          <li>Open-Meteo, with your business location only, if you set one, for the forecast.</li>
+          <li>GDACS and Wikipedia, for disaster alerts and the day's news. Nothing about you is sent.</li>
+          <li>Cloudflare Workers AI, only when you press "Suggest wording": the post text and the finding are sent to draft new wording. Checks themselves never use a model.</li>
+        </ul>
+
+        <h2>What it does not do</h2>
+        <p>No advertising, no analytics, no tracking cookies, no sale or sharing of data. The site sets two cookies: a signed session cookie and a ten-minute cookie used only while you sign in with Buffer.</p>
+
+        <h2>Contact</h2>
+        <p>Questions and requests: <a href="https://github.com/Marc-Dvci/Still-True/issues">github.com/Marc-Dvci/Still-True/issues</a>.</p>
+      </article>
+    </main>
+    <footer>
+      <div class="wrap">
+        <span>Still True is built on the Buffer API. It is not an official Buffer product.</span>
+        <a href="/about#sources">Data sources</a>
+      </div>
+    </footer>
+  </body>
+</html>

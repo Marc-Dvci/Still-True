@@ -1,0 +1,8 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM"],
+    "types": ["node"]
+  },
+  "include": ["src/core", "src/demo", "src/buffer/operations.ts", "eval", "scripts/*.ts", "test/unit", "e2e", "vitest.config.ts", "playwright.config.ts"]
+}

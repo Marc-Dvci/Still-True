@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fire drill · Still True</title>
+    <meta name="description" content="Replay a day of scheduled posts against a real day the world changed: the Los Angeles fires, the Valencia floods, the Türkiye earthquake, a storm over Strasbourg, 13 November in Paris." />
+    <meta property="og:title" content="Fire drill · Still True" />
+    <meta property="og:description" content="Replay a day of scheduled posts against a real day the world changed." />
+    <meta property="og:image" content="https://still-true.chatisthisreal.workers.dev/og-card.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="top">
+      <div class="wrap">
+        <a class="mark" href="/"><span class="clock" aria-hidden="true"></span>Still True</a>
+        <nav aria-label="Main">
+          <a href="/drill" aria-current="page">Fire drill</a>
+          <a class="hide-sm" href="/about">How it works</a>
+          <a class="btn small" href="/auth/login">Connect Buffer</a>
+        </nav>
+      </div>
+    </header>
+    <main id="main" class="wrap">
+      <div class="hero">
+        <p class="eyebrow">Fire drill · no sign-in</p>
+        <h1>Replay a queue on a day the world changed</h1>
+        <p class="lede">
+          The same eight posts, at the same times of day, checked against what was really happening: the disaster alerts
+          GDACS issued, the day's entries in Wikipedia's Current Events, and the archived weather for the place. Connected
+          accounts can replay their own queue.
+        </p>
+      </div>
+      <ul class="scenarios" id="scenarios" aria-label="Scenarios"></ul>
+      <section id="result" aria-live="polite"></section>
+    </main>
+    <footer>
+      <div class="wrap">
+        <span>Still True is built on the Buffer API. It is not an official Buffer product.</span>
+        <a href="/about#sources">Data sources</a>
+        <a href="/privacy">Privacy</a>
+      </div>
+    </footer>
+    <script type="module" src="/src/drill.ts"></script>
+  </body>
+</html>
