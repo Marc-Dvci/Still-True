@@ -1,0 +1,48 @@
+{
+  "name": "still-true",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Re-checks every scheduled Buffer post against the world just before it goes out.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "npm run build:web && wrangler dev",
+    "build:web": "vite build",
+    "build": "npm run build:web && wrangler deploy --dry-run --outdir dist/worker",
+    "deploy": "npm run build:web && wrangler deploy",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p web",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run --project unit --project worker",
+    "test:unit": "vitest run --project unit --coverage",
+    "test:worker": "vitest run --project worker",
+    "test:e2e": "playwright test",
+    "eval": "tsx eval/run.ts",
+    "schema:pull": "tsx scripts/pull-schema.ts"
+  },
+  "dependencies": {
+    "hono": "^4.13.18"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@cloudflare/vitest-plugin": "^1.7.0",
+    "@cloudflare/workers-types": "^5.20261110.1",
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.65.0",
+    "@vitest/coverage-v8": "^4.1.12",
+    "eslint": "^10.14.0",
+    "globals": "^17.14.0",
+    "graphql": "^17.1.0",
+    "prettier": "^3.9.10",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.2",
+    "vite": "^8.3.8",
+    "vitest": "^4.1.12",
+    "wrangler": "^4.160.0"
+  }
+}

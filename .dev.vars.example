@@ -1,0 +1,9 @@
+# Copy to .dev.vars for `wrangler dev`. In production these are Worker secrets (`wrangler secret put NAME`).
+# Buffer App Client (Settings > API > App Clients). Redirect URI must match exactly.
+BUFFER_CLIENT_ID=
+BUFFER_CLIENT_SECRET=
+BUFFER_REDIRECT_URI=https://localhost:8787/auth/callback
+# 32 random bytes, base64. Signs session cookies and encrypts stored Buffer tokens (AES-GCM).
+# Generate: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+SESSION_SECRET=
+TOKEN_KEY=

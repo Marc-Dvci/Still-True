@@ -1,0 +1,6335 @@
+"""
+Marks an operation as exempt from the org-enforced-2FA server gate.
+
+The forced-setup flow needs to read the viewer's own account/organization
+state (`account` query) and complete 2FA setup (`twoFactorSetup`,
+`twoFactorConfirm` mutations) without being blocked by the gate the user is
+trying to satisfy.
+
+Semantics:
+- Applied at the operation top-level field.
+- The schema directive wrapper bypasses the entire request when EVERY top-level
+  field carries this directive — including nested field traversal.
+- Read access to the viewer's data via nested fields is intentional;
+  mutations not in the allow-list remain gated.
+- The directive must NOT be applied to anything that writes business state
+  outside the 2FA-setup flow.
+
+SECURITY NOTE — `Query.account` bypass scope:
+
+  `Query.account` returns the viewer's `Account`, which exposes their
+  membership graph (organizations, channels, billing, members) via nested
+  fields. While the gate is bypassed for this operation, ALL of those
+  nested fields are reachable to a non-2FA member during forced setup.
+  This is the accepted Alpha trade-off — the forced-setup page needs the
+  org list to know it's in an enforcing org, and writes are still gated
+  by every non-bypassed mutation. Follow-up (post-Alpha) is to carve a
+  narrower `viewerForcedSetup` query that exposes only the fields the
+  redirect needs.
+"""
+directive @bypassOrg2FAGate on FIELD_DEFINITION
+
+"""
+Marks a field or type as experimental. Experimental features are under active
+development and may change or be removed without notice.
+"""
+directive @experimental(
+  """Optional reason or context for the experimental status."""
+  reason: String
+) on FIELD_DEFINITION | OBJECT | INTERFACE | UNION | ENUM | ENUM_VALUE | INPUT_OBJECT | INPUT_FIELD_DEFINITION | SCALAR
+
+"""
+Marks a field or type as preview. Preview features are approaching stability
+but may still undergo minor changes based on feedback.
+"""
+directive @preview(
+  """Optional reason or context for the preview status."""
+  reason: String
+) on FIELD_DEFINITION | OBJECT | INTERFACE | UNION | ENUM | ENUM_VALUE | INPUT_OBJECT | INPUT_FIELD_DEFINITION | SCALAR
+
+"""
+Marks a field or type as stable. Stable features follow semantic versioning
+and will not have breaking changes without a deprecation period.
+"""
+directive @stable on FIELD_DEFINITION | OBJECT | INTERFACE | UNION | ENUM | ENUM_VALUE | INPUT_OBJECT | INPUT_FIELD_DEFINITION | SCALAR
+
+"""
+Marks types, fields, and operations as part of the Public API.
+
+On types/inputs/enums: controls schema visibility for third-party clients.
+On Query/Mutation fields: controls visibility, third-party access, and scope enforcement.
+
+When used with scopes on a field, the API Gateway checks that third-party OIDC tokens
+have the required scopes. Internal clients and legacy tokens bypass scope checks.
+"""
+directive @public on OBJECT | FIELD_DEFINITION | INPUT_FIELD_DEFINITION | INPUT_OBJECT | ENUM | UNION | INTERFACE | SCALAR
+
+"""
+Used to declare the Actor who can access the field that the directive has been applied to.
+Note: This needs to be added to any new mutation or query that is added to a schema
+[See this document for more information](https://github.com/bufferapp/core-authentication-service/blob/main/documentation/actor_directives.md)
+"""
+directive @requireActor on FIELD_DEFINITION
+
+"""
+Used to declare that a field can only be resolved if requested by a Buffer Admin
+"""
+directive @requireAdmin on FIELD_DEFINITION
+
+directive @validateEntityOwnership on FIELD_DEFINITION
+
+directive @validatePostOwnership on FIELD_DEFINITION
+
+directive @validateOrganizationId on FIELD_DEFINITION
+
+directive @validateIdeasOwnership on FIELD_DEFINITION
+
+directive @validateIdeaOwnership on FIELD_DEFINITION
+
+type Query {
+  """Retrieves the authenticated user's account information"""
+  account: Account!
+
+  """
+  Returns posting limit status for the given channels at the intended posting time.
+  """
+  dailyPostingLimits(
+    """Query's input."""
+    input: DailyPostingLimitsInput!
+  ): [DailyPostingLimitStatus!]!
+
+  """Fetches a single channel using the provided ID"""
+  channel(
+    """Query's input."""
+    input: ChannelInput!
+  ): Channel!
+
+  """
+  Fetch all channels for the organization taking into account the current's user permissions
+  """
+  channels(
+    """Query's input."""
+    input: ChannelsInput!
+  ): [Channel!]!
+
+  """
+  Aggregate normalized post metrics across a filtered post set. Useful
+  for yearly summaries, channel-level rollups, and BI exports without
+  paginating through thousands of posts.
+  
+  For per-post metrics, use `posts(input)` or `post(input)` with a
+  `metrics { … }` selection — this query is purely for aggregation.
+  
+  The result always contains a baseline trio of entries: `postCount`
+  (number of matched posts in the window), `reactions`, and `comments`.
+  Posts on networks that don't track reactions or comments contribute 0
+  to those totals.
+  
+  Beyond the baseline, additional metric types are returned only when
+  every channel in the filter set supports them. A single-network filter
+  surfaces that network's richer metrics (e.g. impressions, reach,
+  engagementRate on LinkedIn); a mixed-network filter trims the extras
+  to those common to every network in the set.
+  """
+  aggregatedPostMetrics(
+    """
+    Query's input: organization, date range, optional channel and tag
+    filters. Date range is capped to 365 days.
+    """
+    input: AggregatedPostMetricsInput!
+  ): AggregatedPostMetrics!
+
+  """
+  Returns the snippets of an organization, sorted by name. Uses
+  standard cursor pagination: pass the previous page's `pageInfo.endCursor`
+  as `after` to fetch the next page. Requesting more than 100 snippets
+  in a single page is rejected. A cursor whose snippet was deleted
+  reports a BAD_USER_INPUT error. Fetch again from the first page.
+  """
+  snippets(
+    """
+    The cursor after which to return results. Cursors are opaque: treat
+    them as a black box.
+    """
+    after: String
+
+    """The number of snippets to return, from 1 to 100. Defaults to 10."""
+    first: Int
+
+    """The query input."""
+    input: SnippetsInput!
+  ): SnippetsConnection!
+
+  """The authorized Notes in a thread, in descending creation order."""
+  collaborationNotes(
+    """The opaque cursor after which to read Notes."""
+    after: String
+
+    """The number of Notes to read, from 1 through 100. The default is 10."""
+    first: Int
+
+    """The thread whose Notes to read."""
+    input: CollaborationNotesInput!
+  ): CollaborationNotesConnection!
+
+  """
+  Fetches a post by PostID for the given organization: first and last can be set for forward pagination using Relay convention
+  """
+  post(
+    """Query's input."""
+    input: PostInput!
+  ): Post!
+
+  """
+  Fetches posts for the given organization: first and last can be set for forward pagination using Relay convention
+  """
+  posts(
+    """The cursor of the post to start fetching from"""
+    after: String
+
+    """The number of posts to return"""
+    first: Int
+
+    """Query's input."""
+    input: PostsInput!
+  ): PostsResults!
+
+  """
+  Fetch a single content item by id. Errors if no content item with that id
+  exists.
+  
+  This API is an early preview and can change without a deprecation period.
+  """
+  contentItem(
+    """Input for fetching a single content item."""
+    input: ContentItemInput!
+  ): ContentItem!
+
+  """
+  Fetch an organization's content items in the requested order, newest first
+  by default. Uses standard cursor pagination: pass the previous page's
+  `pageInfo.endCursor` as `after` to fetch the next page. Requesting more than
+  100 items in a single page is rejected.
+  
+  This API is an early preview and can change without a deprecation period.
+  """
+  contentItems(
+    """
+    The cursor after which to return results. Cursors are opaque: treat
+    them as a black box and reset to null when the input changes, since a
+    cursor from a different result set produces undefined behavior.
+    """
+    after: String
+
+    """The number of content items to return, up to 100."""
+    first: Int
+
+    """Input for listing content items."""
+    input: ContentItemsInput!
+  ): ContentItemsConnection!
+
+  """
+  Fetch a single tag by id.
+  
+  Resolves to null with a NOT_FOUND error when no tag has that id, and with an
+  UNAUTHORIZED error when the tag belongs to an organization the caller cannot
+  read. Both are reported in the errors array.
+  
+  This API is an early preview and can change without a deprecation period.
+  """
+  tag(
+    """Identifies the tag to fetch."""
+    input: TagByIdInput!
+  ): Tag
+
+  """
+  Fetch a page of the organization's tags, sorted by name in ascending order.
+  Uses standard cursor pagination: pass the previous page's `pageInfo.endCursor`
+  as `after` to fetch the next page. Requesting more than 100 tags in a single
+  page is rejected.
+  
+  This API is an early preview and can change without a deprecation period.
+  """
+  tagsV2(
+    """
+    The cursor after which to return results. Cursors are opaque: treat them as
+    a black box and reset to null when the input changes, since a cursor from a
+    different result set produces undefined behavior.
+    """
+    after: String
+
+    """The number of tags to return, up to 100."""
+    first: Int
+
+    """
+    Identifies the organization whose tags to list, and how to filter them.
+    """
+    input: TagsInput!
+  ): TagsConnection!
+
+  """
+  The team members the requesting account may offer for selection, ordered by
+  display name and then by account ID. On an organization with Roles, a
+  locked member with an assigned role remains eligible in both scopes,
+  because the lock keeps viewer-level access. Locked members without a role,
+  and those in organizations without Roles, are excluded from both scopes.
+  Backs the @-mention picker in Notes and is reusable for any other member picker.
+  
+  The list is live rather than snapshotted, and the sort key is a display
+  name, so a member renamed while a client is paging can arrive twice or be
+  missed. Merge pages by node ID if that matters.
+  """
+  selectableTeamMembers(
+    """The opaque cursor after which to read team members."""
+    after: String
+
+    """
+    The number of team members to read, from 1 through 100. The default is 10.
+    """
+    first: Int
+
+    """The scope and search term."""
+    input: SelectableTeamMembersInput!
+  ): SelectableTeamMembersConnection!
+
+  """
+  Refresh metadata and preview availability for one Instagram audio asset.
+  Requires Facebook Login. Instagram Login channels return ChannelRefreshRequired.
+  """
+  instagramAudio(
+    """Channel and audio asset used to refresh metadata."""
+    input: InstagramAudioInput!
+  ): InstagramAudioPayload!
+
+  """
+  Search Instagram audio for one channel.
+  Requires Facebook Login. Instagram Login channels return ChannelRefreshRequired.
+  """
+  searchInstagramAudio(
+    """Channel, catalog type, and search text."""
+    input: SearchInstagramAudioInput!
+  ): SearchInstagramAudioPayload!
+
+  """
+  Return Meta trending Instagram audio for one channel.
+  Requires Facebook Login. Instagram Login channels return ChannelRefreshRequired.
+  """
+  trendingInstagramAudio(
+    """Channel and catalog type for Meta trending audio."""
+    input: TrendingInstagramAudioInput!
+  ): SearchInstagramAudioPayload!
+
+  """
+  Return trending music and original sounds in a single request.
+  Requires Facebook Login. Instagram Login channels return ChannelRefreshRequired.
+  """
+  instagramAudioCatalog(
+    """Channel to load trending audio for. No catalog selection is needed."""
+    input: InstagramAudioCatalogInput!
+  ): InstagramAudioCatalogPayload!
+
+  """
+  Search music and original sounds in a single request.
+  Requires Facebook Login. Instagram Login channels return ChannelRefreshRequired.
+  """
+  searchInstagramAudioCatalog(
+    """Channel and nonblank search text. No catalog selection is needed."""
+    input: SearchInstagramAudioCatalogInput!
+  ): InstagramAudioCatalogPayload!
+
+  """
+  Global, per-organization configuration: the connected `channels` the actor can
+  view (with per-feature authorization) plus the service-level capability
+  catalog (`services`). One round trip for every capability domain; clients
+  select only what they need.
+  """
+  configuration(
+    """Input for the configuration query."""
+    input: ConfigurationInput!
+  ): Configuration!
+
+  """Fetch a single post template by ID. Returns null if not found."""
+  postTemplate(
+    """Input for fetching a single post template."""
+    input: PostTemplateInput!
+  ): PostTemplate
+
+  """
+  Fetch the templates visible to the current actor for the template
+  library: public templates, plus internal templates from the supplied
+  `organizationId`, plus private templates owned by the actor's
+  account. The visibility scope is always pinned to the actor and the
+  supplied organization — the input filter can only narrow within that
+  scope, never widen it.
+  """
+  postTemplates(
+    """The cursor after which to return results."""
+    after: String
+
+    """The number of templates to return."""
+    first: Int
+
+    """Input containing the organization scope and optional filters."""
+    input: PostTemplatesInput!
+  ): PostTemplatesConnection!
+
+  """Retrieves idea groups based on the provided input parameters."""
+  ideaGroups(
+    """Input for retrieving idea groups."""
+    input: IdeaGroupsInput!
+  ): [IdeaGroup!]!
+
+  """Fetch a paginated list of ideas with optional filtering"""
+  ideas(
+    """Cursor for pagination, marks where to start fetching from"""
+    after: String
+
+    """Maximum number of items to return"""
+    first: Int
+
+    """Filtering criteria for the ideas list"""
+    input: IdeasInput!
+  ): IdeasConnection!
+}
+
+type Mutation {
+  """Creates a snippet in an organization."""
+  createSnippet(
+    """Input for createSnippet."""
+    input: CreateSnippetInput!
+  ): CreateSnippetPayload!
+
+  """Deletes a snippet."""
+  deleteSnippet(
+    """Input for deleteSnippet."""
+    input: DeleteSnippetInput!
+  ): DeleteSnippetPayload!
+
+  """Replaces the name and text of a snippet."""
+  updateSnippet(
+    """Input for updateSnippet."""
+    input: UpdateSnippetInput!
+  ): UpdateSnippetPayload!
+
+  """Creates a collaboration Note in a thread."""
+  createCollaborationNote(
+    """The new Note content."""
+    input: CreateCollaborationNoteInput!
+  ): CreateCollaborationNotePayload!
+
+  """Deletes a collaboration Note."""
+  deleteCollaborationNote(
+    """The Note to delete."""
+    input: DeleteCollaborationNoteInput!
+  ): DeleteCollaborationNotePayload!
+
+  """Updates a collaboration Note."""
+  updateCollaborationNote(
+    """The replacement Note content."""
+    input: UpdateCollaborationNoteInput!
+  ): UpdateCollaborationNotePayload!
+
+  """Create post for channel"""
+  createPost(
+    """The mutation's input"""
+    input: CreatePostInput!
+  ): PostActionPayload!
+
+  """Delete a post by id."""
+  deletePost(
+    """Input for the deletePost mutation."""
+    input: DeletePostInput!
+  ): DeletePostPayload!
+
+  """Edit post for channel"""
+  editPost(
+    """The mutation's input"""
+    input: EditPostInput!
+  ): PostActionPayload!
+
+  """
+  Move a queued post to the top or bottom of its channel's queue. Unlike editPost, this
+  is a scheduling-only operation that never re-validates the post's content.
+  """
+  movePostInQueue(
+    """The mutation's input"""
+    input: MovePostInQueueInput!
+  ): MovePostInQueuePayload!
+
+  """
+  Add a post that already exists to a content item. The mutation creates no
+  post. To add a new post, call createPost first.
+  """
+  addPostToContentItem(
+    """Input for addPostToContentItem."""
+    input: AddPostToContentItemInput!
+  ): AddPostToContentItemPayload!
+
+  """
+  Create a content item together with all of its channel-specific post variants
+  in a single operation. Validation is all-or-nothing: if any variant fails
+  validation, no content item and no variants are created. Variants that fail
+  while being processed after creation are reported per channel in the failure
+  payload; the content item and its variants are still created in that case.
+  
+  This API is an early preview and can change without a deprecation period.
+  """
+  createContentItem(
+    """Input for createContentItem."""
+    input: CreateContentItemInput!
+  ): CreateContentItemPayload!
+
+  """
+  Create a content item holding a channel-less draft, before any channels
+  are selected. No network-specific validation applies to the draft content.
+  The draft needs text or at least one asset.
+  
+  This API is an early preview and can change without a deprecation period.
+  """
+  createContentItemDraft(
+    """Input for createContentItemDraft."""
+    input: CreateContentItemDraftInput!
+  ): CreateContentItemDraftPayload!
+
+  """
+  Delete a content item: the item itself and any posts created from it.
+  Deletion is all-or-nothing. Every post must be deletable on its own, or
+  nothing is deleted and every blocked post is reported at once. A post can
+  only be deleted while it is a draft, awaiting approval, scheduled, or
+  failed, so an item cannot be deleted while any of its posts is publishing
+  or already published. An item still holding a channel-less draft has no
+  posts, so nothing blocks it. An error can also be reported when a post
+  could not be fully processed after the deletion already took effect;
+  re-fetch before retrying.
+  
+  Deleting a content item also deletes the team notes on the item and on its
+  posts. The notes are removed shortly after the item is deleted.
+  
+  This API is an early preview and can change without a deprecation period.
+  """
+  deleteContentItem(
+    """Input for deleteContentItem."""
+    input: DeleteContentItemInput!
+  ): DeleteContentItemPayload!
+
+  """
+  Promote a channel-less draft into channel-specific posts. One-way: once
+  promoted, the content item can no longer be edited as a draft. If any post
+  fails validation, none are created. A failure can also be reported when a
+  post could not be fully processed after the promotion already took effect;
+  re-fetch the content item to check its state before retrying.
+  
+  This API is an early preview and can change without a deprecation period.
+  """
+  promoteContentItemDraftToPosts(
+    """Input for promoteContentItemDraftToPosts."""
+    input: PromoteContentItemDraftToPostsInput!
+  ): PromoteContentItemDraftToPostsPayload!
+
+  """
+  Remove a post from a content item. The post survives on its own channel
+  and keeps its schedule, text, status, and tags. Only the link to the
+  content item goes away. To delete a post, call deletePost.
+  
+  A second call with a post that belongs to no content item changes nothing,
+  and the mutation reports success.
+  """
+  removePostFromContentItem(
+    """Input for removePostFromContentItem."""
+    input: RemovePostFromContentItemInput!
+  ): RemovePostFromContentItemPayload!
+
+  """
+  Update a content item's title or target date. Fields that are
+  omitted keep their current value.
+  
+  This API is an early preview and can change without a deprecation period.
+  """
+  updateContentItem(
+    """Input for updateContentItem."""
+    input: UpdateContentItemInput!
+  ): UpdateContentItemPayload!
+
+  """
+  Replace a channel-less draft's content in full, and optionally set the
+  content item's target date in the same write. The draft needs text or at
+  least one asset. Only valid while the content item is still a draft.
+  
+  This API is an early preview and can change without a deprecation period.
+  """
+  updateContentItemDraft(
+    """Input for updateContentItemDraft."""
+    input: UpdateContentItemDraftInput!
+  ): UpdateContentItemDraftPayload!
+
+  """
+  Create a tag for an organization.
+  
+  The name must be unique within the organization; a duplicate is refused with
+  `DuplicateError`. Creation is refused with `LimitReachedError` once the
+  organization already holds as many tags as its plan allows.
+  
+  This API is an early preview and can change without a deprecation period.
+  """
+  createTag(
+    """
+    Identifies the organization to create the tag in, and the name and color to
+    give the tag.
+    """
+    input: CreateTagInput!
+  ): CreateTagPayload!
+
+  """
+  Delete a tag.
+  
+  The tag is removed from every post, idea and content item carrying it; those
+  items are otherwise untouched. A locked tag can be deleted, and deleting an
+  unlocked tag frees a slot for the oldest locked one. See `Tag.isLocked`.
+  
+  This API is an early preview and can change without a deprecation period.
+  """
+  deleteTag(
+    """Identifies the tag to delete."""
+    input: DeleteTagInput!
+  ): DeleteTagPayload!
+
+  """
+  Update a tag's name and color.
+  
+  Both values are replaced, so send the current value for the one you are not
+  changing. The new name must still be unique within the organization; a
+  duplicate is refused with `DuplicateError`.
+  
+  A locked tag cannot be edited and the update is refused. See `Tag.isLocked`.
+  
+  This API is an early preview and can change without a deprecation period.
+  """
+  updateTag(
+    """Identifies the tag to update, and the name and color to set on it."""
+    input: UpdateTagInput!
+  ): UpdateTagPayload!
+
+  """
+  Create a post template visible only to the caller (`private`) or to
+  the caller's organization (`internal`).
+  """
+  createPostTemplate(
+    """Input for creating a post template."""
+    input: CreatePostTemplateInput!
+  ): CreatePostTemplatePayload!
+
+  """
+  Delete a post template owned by the caller (or an internal template
+  in the caller's organization, if the caller is an org admin/owner).
+  """
+  deletePostTemplate(
+    """Input for deleting a post template."""
+    input: DeletePostTemplateInput!
+  ): DeletePostTemplatePayload!
+
+  """
+  Update a post template owned by the caller (or an internal template
+  in the caller's organization, if the caller is an org admin/owner).
+  """
+  updatePostTemplate(
+    """Input for updating a post template."""
+    input: UpdatePostTemplateInput!
+  ): UpdatePostTemplatePayload!
+
+  """Create a new idea with the given content and metadata"""
+  createIdea(
+    """Input to create an idea"""
+    input: CreateIdeaInput!
+  ): CreateIdeaPayload!
+}
+
+"""An annotation in text input."""
+input AnnotationInput {
+  """The text content in the annotation span."""
+  content: String!
+
+  """The display value, when present."""
+  displayValue: String
+
+  """The start and exclusive end offsets in the text."""
+  indices: [Int!]!
+
+  """The service entity ID, when present."""
+  serviceEntityId: String
+
+  """The text representation of the annotation."""
+  text: String!
+
+  """The annotation type."""
+  type: AnnotationType!
+
+  """The annotation URL, when present."""
+  url: String
+}
+
+enum ScheduleOption {
+  Queue
+  Prioritize
+  FixedTime
+  Now
+}
+
+"""Allow retrieving a specific Organization"""
+input OrganizationFilterInput {
+  organizationId: String!
+}
+
+"""Account preferences"""
+type Preferences {
+  timeFormat: String
+  startOfWeek: String
+  defaultScheduleOption: ScheduleOption!
+}
+
+"""Account is a representation of a Buffer user."""
+type Account {
+  """Unique identifier for the account"""
+  id: ID!
+
+  """Primary email address for the account"""
+  email: String!
+
+  """Backup email address for account recovery"""
+  backupEmail: String
+
+  """URL to the account's avatar image"""
+  avatar: String!
+
+  """
+  Date the account was created in the Core DB. For older customers, it's possible a Publish account existed in the Publish DB for this customer before this date
+  """
+  createdAt: DateTime
+  organizations(filter: OrganizationFilterInput): [Organization!]!
+
+  """
+  The account-level timezone - this is used as a default input for streaks, posting plans, and new channel channel connections.
+  """
+  timezone: String
+
+  """The account name, different from the organization name"""
+  name: String
+
+  """The accounts preferences"""
+  preferences: Preferences
+
+  """The connected apps for the account"""
+  connectedApps: [ConnectedApp!]
+}
+
+type YoutubeCategory {
+  categoryId: String!
+  title: String!
+}
+
+"""Comparator for filtering by date"""
+input DateTimeComparator {
+  """
+  Include results with dates equal to or before
+  the specified date
+  """
+  end: DateTime
+
+  """
+  Include results with dates equal to or after
+  the specified date
+  """
+  start: DateTime
+}
+
+"""
+Presence filter for nullable date fields.
+When filtering the same field, absent dates cannot also match a date comparator range.
+"""
+enum DateTimePresence {
+  """Include results where the date field is missing or null"""
+  absent
+
+  """Include results where the date field exists and is not null"""
+  present
+}
+
+"""Comparator for filtering by tags"""
+input TagComparator {
+  """Include results that have any of the specified tags (union/OR)."""
+  in: [TagId!]!
+
+  """
+  When true, include results that have no tags assigned.
+  Can be combined with 'in' for union filtering.
+  Defaults to false if not specified.
+  """
+  isEmpty: Boolean! = false
+}
+
+"""Day of the week."""
+enum DayOfWeek {
+  fri
+  mon
+  sat
+  sun
+  thu
+  tue
+  wed
+}
+
+"""Base Mutation Error type"""
+interface MutationError {
+  """Error message"""
+  message: String!
+}
+
+"""
+Error implementation that allows clients to resolve the MutationError on mutations that do not currently have typed errors.
+This allows clients to automatically handle errors that may be added to a mutation in future.
+
+Do not directly throw this error, use a custom typed error instead
+"""
+type VoidMutationError implements MutationError {
+  """Error message"""
+  message: String!
+}
+
+"""Error returned when the input is invalid"""
+type InvalidInputError implements MutationError {
+  """Error message"""
+  message: String!
+}
+
+"""Error returned when the resource is not found"""
+type NotFoundError implements MutationError {
+  """Error message"""
+  message: String!
+}
+
+"""Error returned when the user is not authorized to perform the action"""
+type UnauthorizedError implements MutationError {
+  """Error message"""
+  message: String!
+}
+
+"""Error returned when unexpected error occurs"""
+type UnexpectedError implements MutationError {
+  """Error message"""
+  message: String!
+}
+
+"""Error returned when the limit is reached"""
+type LimitReachedError implements MutationError {
+  """Error message"""
+  message: String!
+}
+
+"""Error returned when a unique constraint is violated"""
+type DuplicateError implements MutationError {
+  """Error message"""
+  message: String!
+}
+
+"""Error returned when the channel needs a refresh"""
+type ChannelRefreshRequired implements MutationError {
+  """ChannelIds that need refreshing"""
+  channelIds: [ChannelId!]!
+
+  """Error message"""
+  message: String!
+}
+
+"""
+An error passed through from Buffer's legacy REST API.
+
+**On the way out.** This type exists only because some mutations still forward
+to that API. It is never returned by the tag mutations, and will be removed from
+their payloads. The post mutations can still return it, so keep handling it
+there for now.
+
+Do not select it in new operations. Select `... on MutationError { message }`
+instead, which every error type implements and which keeps working when this one
+goes away.
+"""
+type RestProxyError implements MutationError {
+  """
+  Error code from the REST API response - https://buffer.com/developers/api/errors
+  """
+  code: Int @deprecated(reason: "Being retired along with Buffer's legacy REST API. Select `... on MutationError { message }` to handle errors generically, or the specific recoverable error members of the payload.")
+
+  """Link to our Help center from the REST API response"""
+  link: String @deprecated(reason: "Being retired along with Buffer's legacy REST API. Select `... on MutationError { message }` to handle errors generically, or the specific recoverable error members of the payload.")
+
+  """An error message from the REST API response that we proxied here"""
+  message: String!
+}
+
+"""
+Base Mutation Success type
+Used when we have a success response with no data, we return this type with empty string
+"""
+interface MutationSuccess {
+  """
+  The value is alwaus an empty string ''
+  Note: GraphQL doesn't allow types with no fields, so we have to add this field
+  """
+  _empty: String!
+}
+
+"""
+Empty mutation success response used when client doesn't need any data back
+or simply needs to respond to a success or error.
+"""
+type EmptySuccess implements MutationSuccess {
+  """
+  The value is always an empty string ''
+  Note: GraphQL doesn't allow types with no fields, so we have to add this field
+  """
+  _empty: String!
+}
+
+"""The type of a note."""
+enum NoteType {
+  """A note that was generated by our AI system."""
+  aiGenerated
+
+  """
+  A note that was generated by our internal system. Can be used for approval flows notifications or other automated processes.
+  """
+  bufferGenerated
+
+  """A note that was manually written by a user."""
+  userGenerated
+}
+
+"""Information to aid in pagination."""
+type PaginationPageInfo {
+  """The last cursor in the list. It can be used to fetch the next page."""
+  endCursor: String
+
+  """When set to true, it means there is a next page available."""
+  hasNextPage: Boolean!
+
+  """
+  When set to true, it means there is a previous page available. Will always return false for now as we only support forward pagination.
+  """
+  hasPreviousPage: Boolean!
+
+  """
+  The first cursor in the list. It can be used to fetch the previous page.
+  """
+  startCursor: String
+}
+
+"""Buffer products, buffer is used as all products"""
+enum Product {
+  analyze
+  buffer
+  comments
+  engage
+  publish
+  startPage
+}
+
+"""The list of services that can be authorized."""
+enum Service {
+  bluesky
+  facebook
+  googlebusiness
+  instagram
+  linkedin
+  mastodon
+  pinterest
+  startPage
+  substack
+  threads
+  tiktok
+  twitter
+  whatsapp
+  youtube
+}
+
+"""Direction to sort the results by."""
+enum SortDirection {
+  """Sort records in ascending order."""
+  asc
+
+  """Sort records in descending order."""
+  desc
+}
+
+"""
+Stable Buffer identifiers for the supported tag color palette.
+Clients map these values to platform- and theme-specific presentation.
+Values ending in `Light` are lighter palette variants, not UI theme modes.
+"""
+enum TagColorName {
+  """The standard blue palette color."""
+  blue
+
+  """The lighter blue palette color."""
+  blueLight
+
+  """The standard gray palette color."""
+  gray
+
+  """The lighter gray palette color."""
+  grayLight
+
+  """The standard green palette color."""
+  green
+
+  """The lighter green palette color."""
+  greenLight
+
+  """The standard orange palette color."""
+  orange
+
+  """The lighter orange palette color."""
+  orangeLight
+
+  """The standard pink palette color."""
+  pink
+
+  """The lighter pink palette color."""
+  pinkLight
+
+  """The standard purple palette color."""
+  purple
+
+  """The lighter purple palette color."""
+  purpleLight
+
+  """The standard red palette color."""
+  red
+
+  """The lighter red palette color."""
+  redLight
+
+  """The standard teal palette color."""
+  teal
+
+  """The lighter teal palette color."""
+  tealLight
+
+  """The standard yellow palette color."""
+  yellow
+
+  """The lighter yellow palette color."""
+  yellowLight
+}
+
+"""The `URL` scalar represents a valid URL"""
+scalar URL
+
+"""
+The `DateTime` scalar represents a date and time following the ISO 8601 standard.
+"""
+scalar DateTime
+
+"""The `AccountId` scalar represents the ID of a Buffer Account"""
+scalar AccountId
+
+"""The `ChannelId` scalar represents the ID of a Buffer Channel"""
+scalar ChannelId
+
+"""The `IdeaId` scalar represents the ID of a Buffer Idea"""
+scalar IdeaId
+
+"""
+The `InvitationId` scalar represents the ID of a pending team invitation
+"""
+scalar InvitationId
+
+"""The `NoteId` scalar represents the ID of a Buffer Note"""
+scalar NoteId
+
+"""The `DraftId` scalar represents the ID of a Buffer Draft"""
+scalar DraftId
+
+"""The `OrganizationId` scalar represents the ID of a Buffer Organization"""
+scalar OrganizationId
+
+"""The `PostId` scalar represents the ID of a Buffer Post"""
+scalar PostId
+
+"""The `TagId` scalar represents the ID of a Buffer Tag"""
+scalar TagId
+
+"""The `SnippetId` scalar represents the ID of a Snippet."""
+scalar SnippetId
+
+"""The `PostTemplateId` scalar represents the ID of a Post Template."""
+scalar PostTemplateId
+
+"""A unique identifier for a content item."""
+scalar ContentItemId
+
+"""A unique identifier for a channel-less draft's content."""
+scalar DraftContentId
+
+"""
+The `Uuid` scalar represents an RFC 4122 v4 UUID,
+e.g. `550e8400-e29b-41d4-a716-446655440000`.
+"""
+scalar Uuid
+
+"""
+The `Email` scalar represents a valid, normalized email address.
+Input is trimmed and lowercased before validation.
+"""
+scalar Email
+
+"""Asset interface with common fields"""
+interface Asset {
+  """The ID of the asset in the database"""
+  id: ID
+
+  """The MIME type of the asset"""
+  mimeType: String!
+
+  """URL to the file source"""
+  source: String!
+
+  """URL to the static thumbnail of the asset"""
+  thumbnail: String!
+
+  """The type of the asset"""
+  type: AssetType!
+}
+
+"""Image metadata"""
+type ImageMetadata {
+  """Alternative text for accessibility"""
+  altText: String!
+
+  """Animated thumbnail URL"""
+  animatedThumbnail: String
+
+  """Image height in pixels"""
+  height: Int!
+
+  """Is the image animated?"""
+  isAnimated: Boolean!
+
+  """User tags in the image"""
+  userTags: [UserTag!]
+
+  """Image width in pixels"""
+  width: Int!
+}
+
+"""User tag in the image"""
+type UserTag {
+  """The handle (username) of the tagged account, without the leading @."""
+  handle: String!
+
+  """
+  Horizontal position of the tag as a normalized decimal float between 0.0 and 1.0 - the fraction of the image width from the left edge (0.5 is the horizontal center).
+  """
+  x: Float!
+
+  """
+  Vertical position of the tag as a normalized decimal float between 0.0 and 1.0 - the fraction of the image height from the top edge (0.5 is the vertical center).
+  """
+  y: Float!
+}
+
+"""Image asset"""
+type ImageAsset implements Asset {
+  """The ID of the asset in the database"""
+  id: ID
+
+  """Image specific metadata"""
+  image: ImageMetadata!
+
+  """The MIME type of the asset"""
+  mimeType: String!
+
+  """URL to the file source"""
+  source: String!
+
+  """URL to the static thumbnail of the asset"""
+  thumbnail: String!
+
+  """The type of the asset"""
+  type: AssetType!
+}
+
+"""Video metadata"""
+type VideoMetadata {
+  """Audio codec"""
+  audioCodec: String
+
+  """Video container format"""
+  containerFormat: String
+
+  """Video duration in seconds"""
+  durationMs: Int!
+
+  """Video fileSize in bytes"""
+  fileSize: Int
+
+  """Video framerate"""
+  frameRate: Int
+
+  """Video height in pixels"""
+  height: Int!
+
+  """Whether the video needs to be transcoded before it can be broadcasted"""
+  isTranscodingRequired: Boolean!
+
+  """
+  Whether the video is currently being processed (transcoding in progress)
+  """
+  isVideoProcessing: Boolean!
+
+  """Rotation degree"""
+  rotationDegree: Int
+
+  """Offset of the thumbnail chosen for the video, in ms"""
+  thumbnailOffset: Int
+
+  """Video title"""
+  title: String
+
+  """Video bitrate in kbps"""
+  videoBitRate: Int
+
+  """Video codec"""
+  videoCodec: String
+
+  """Video width in pixels"""
+  width: Int!
+}
+
+"""Video asset"""
+type VideoAsset implements Asset {
+  """The ID of the asset in the database"""
+  id: ID
+
+  """The MIME type of the asset"""
+  mimeType: String!
+
+  """URL to the file source"""
+  source: String!
+
+  """URL to the static thumbnail of the asset"""
+  thumbnail: String!
+
+  """The type of the asset"""
+  type: AssetType!
+
+  """Video specific metadata"""
+  video: VideoMetadata!
+}
+
+"""Document metadata"""
+type DocumentMetadata {
+  """Document fileSize in bytes"""
+  filesize: Int
+
+  """Number of pages in the document"""
+  numPages: Int!
+
+  """URLs to the static thumbnails of the document pages"""
+  thumbnails: [String!]!
+
+  """Document title"""
+  title: String
+}
+
+"""Document asset"""
+type DocumentAsset implements Asset {
+  """The ID of the asset in the database"""
+  id: ID
+
+  """Document specific metadata"""
+  document: DocumentMetadata!
+
+  """The MIME type of the asset"""
+  mimeType: String!
+
+  """URL to the file source"""
+  source: String!
+
+  """URL to the static thumbnail of the asset"""
+  thumbnail: String!
+
+  """The type of the asset"""
+  type: AssetType!
+}
+
+"""A single entity's asset. Exactly one variant must be provided."""
+input AssetInput {
+  """Document asset"""
+  document: DocumentAssetInput
+
+  """Image asset"""
+  image: ImageAssetInput
+
+  """Video asset"""
+  video: VideoAssetInput
+}
+
+"""Link attached to the post"""
+input LinkAssetInput {
+  """Description of the link"""
+  description: String
+
+  """Thumbnail URL of the link"""
+  thumbnailUrl: String
+
+  """Title of the link"""
+  title: String
+
+  """URL to the link"""
+  url: String!
+}
+
+"""Image metadata"""
+input ImageMetadataInput {
+  """Alternative text for accessibility"""
+  altText: String!
+
+  """Animated thumbnail URL"""
+  animatedThumbnail: String
+
+  """
+  Accounts to tag at specific points on the image. Each tag's x/y position uses normalized 0.0-1.0 coordinates - see UserTagInput.
+  """
+  userTags: [UserTagInput!]
+}
+
+"""Image dimensions"""
+input ImageDimensionsInput {
+  """Image height in pixels"""
+  height: Int!
+
+  """Image width in pixels"""
+  width: Int!
+}
+
+"""User tag in the image"""
+input UserTagInput {
+  """The handle (username) of the account to tag, without the leading @."""
+  handle: String!
+
+  """
+  Horizontal position of the tag as a normalized decimal float between 0.0 and 1.0 - the fraction of the image width from the left edge (0.5 is the horizontal center). Pass a number, not a string, and do not use pixel coordinates; to convert, divide the pixel X by the image width.
+  """
+  x: Float!
+
+  """
+  Vertical position of the tag as a normalized decimal float between 0.0 and 1.0 - the fraction of the image height from the top edge (0.5 is the vertical center). Pass a number, not a string, and do not use pixel coordinates; to convert, divide the pixel Y by the image height.
+  """
+  y: Float!
+}
+
+"""Image asset"""
+input ImageAssetInput {
+  """Image specific metadata"""
+  metadata: ImageMetadataInput
+
+  """URL to the static thumbnail of the asset"""
+  thumbnailUrl: String
+
+  """URL to the file source"""
+  url: String!
+}
+
+"""Video metadata"""
+input VideoMetadataInput {
+  """Offset of the thumbnail chosen for the video, in ms"""
+  thumbnailOffset: Int
+
+  """Video title"""
+  title: String
+}
+
+"""Video asset"""
+input VideoAssetInput {
+  """Video specific metadata"""
+  metadata: VideoMetadataInput
+
+  """
+  Do not use: social networks do not accept custom video thumbnail images, and
+  the API rejects video assets that set this field. To choose the video
+  thumbnail, set `metadata.thumbnailOffset` to select a frame from the video
+  (supported for Instagram, TikTok, and Pinterest only).
+  """
+  thumbnailUrl: String
+
+  """URL to the file source"""
+  url: String!
+}
+
+"""Document asset"""
+input DocumentAssetInput {
+  """Document thumbnail URL"""
+  thumbnailUrl: String!
+
+  """Document title"""
+  title: String!
+
+  """Document URL"""
+  url: String!
+}
+
+"""The category of a connected app."""
+enum ConnectedAppCategory {
+  """An MCP client connection."""
+  mcp
+}
+
+"""Connected App"""
+type ConnectedApp {
+  """The category of the connected app, when known."""
+  category: ConnectedAppCategory
+
+  """The id of the connectedApp."""
+  clientId: ID!
+
+  """A brief description of the connected app."""
+  description: String!
+
+  """The name of the connected app."""
+  name: String!
+
+  """
+  The access scopes granted to this connection for Buffer's public API
+  resources. Empty when the connection holds none.
+  """
+  scopes: [String!]!
+
+  """The id of the user that has granted access to the app."""
+  userId: ID!
+
+  """The website URL of the connected app."""
+  website: String!
+
+  """The date and time when the connected app was created."""
+  createdAt: DateTime!
+}
+
+"""Represent the author of a post or note."""
+type Author {
+  """The unique identifier of the author."""
+  id: AccountId!
+
+  """The avatar URL of the author."""
+  avatar: String!
+
+  """The email address of the author."""
+  email: String!
+
+  """Indicates whether the author is a deleted."""
+  isDeleted: Boolean!
+
+  """The name of the author. Null if the user has not yet set a name."""
+  name: String
+
+  """
+  The Buffer account URN for this author, in the form
+  `urn:buffer:account:<account-id>`. Null when the author is deleted or the
+  account ID is missing or invalid. A URN identifies an account. It does not
+  prove that the account exists, that the caller has access, or that the
+  account can be mentioned.
+  """
+  urn: String
+}
+
+"""
+Channel is a representation of a social media account or page that can be connected to Buffer.
+"""
+enum ChannelType {
+  account
+  business
+  channel
+  group
+  page
+  profile
+}
+
+"""Location data about the channel"""
+type LocationData {
+  """Google Account Id of the business"""
+  googleAccountId: String
+
+  """Location of the business associated with the channel"""
+  location: String
+
+  """Link to the map"""
+  mapsLink: String
+}
+
+"""Weekly posting limit for a channel"""
+type WeeklyPostingLimit {
+  """The weekly posting limit for the channel"""
+  limit: Int!
+
+  """The number of posts the channel has scheduled for this week"""
+  scheduled: Int!
+
+  """The number of posts the channel has sent this week"""
+  sent: Int!
+}
+
+"""List of possible actions that can be performed on a Channel"""
+enum ChannelAction {
+  approvePosts
+  backfillChannel
+  exportInsights
+  interactWithTakeaways
+  manageCapabilities
+  manageChannelSettings
+  manageComments
+  manageDms
+  manageIntegrations
+  managePostingSchedule
+  manageUpdates
+  publishStartPage
+  readUpdates
+  reconnectChannel
+  removeChannel
+  scheduleUpdates
+  viewCapabilities
+  viewChannel
+  viewComments
+  viewDms
+  viewInsights
+  viewPublish
+  viewUpdates @deprecated(reason: "Renamed to `viewPublish`. Still emitted for backward-compat with clients that gate on `viewUpdates`; use `viewPublish` to gate the Publish UI or `readUpdates` to gate reading post data. Will be removed once no client reads it.")
+}
+
+"""Metadata or settings about the channel depending on the service type"""
+union ChannelMetadata = InstagramMetadata | TiktokMetadata | YoutubeMetadata | PinterestMetadata | MastodonMetadata | BlueskyMetadata | GoogleBusinessMetadata | FacebookMetadata | TwitterMetadata | LinkedInMetadata | WhatsAppMetadata
+
+"""Twitter metadata"""
+type TwitterMetadata {
+  """Indicates the type of subscription the user has on Twitter"""
+  subscriptionType: String
+}
+
+"""LinkedIn metadata"""
+type LinkedInMetadata {
+  """
+  Property parsed from scopes indicating whether the client should show the LinkedIn analytics refresh banner
+  """
+  shouldShowLinkedinAnalyticsRefreshBanner: Boolean!
+}
+
+"""Pinterest metadata"""
+type PinterestMetadata {
+  """The list of boards the user has on Pinterest"""
+  boards: [PinterestBoard!]!
+}
+
+"""Mastodon metadata"""
+type MastodonMetadata {
+  """Maximum character limit allowed for this channel's server instance"""
+  maxCharacters: Int!
+
+  """The instance of mastodon of the channel"""
+  serverUrl: String!
+}
+
+"""Bluesky metadata"""
+type BlueskyMetadata {
+  """The instance of bluesky of the channel"""
+  serverUrl: String!
+}
+
+"""Google Business metadata"""
+type GoogleBusinessMetadata {
+  """
+  Metadata about the location of the business associated with the channel. Only available for Facebook and GPB
+  """
+  locationData: LocationData
+}
+
+"""Facebook metadata"""
+type FacebookMetadata {
+  """
+  Metadata about the location of the business associated with the channel. Only available for Facebook and GPB
+  """
+  locationData: LocationData
+}
+
+"""Instagram metadata"""
+type InstagramMetadata {
+  """
+  Indicates if we should default to reminder for Instagram
+  Source: field resolver: profile.default_to_reminders
+  """
+  defaultToReminders: Boolean!
+}
+
+"""Youtube metadata"""
+type YoutubeMetadata {
+  """
+  Indicates if we should default to reminder for Youtube
+  Source: field resolver: profile.default_to_reminders
+  """
+  defaultToReminders: Boolean!
+}
+
+"""Tiktok metadata"""
+type TiktokMetadata {
+  """
+  Indicates if we should default to reminder for Tiktok
+  Source: field resolver: profile.default_to_reminders
+  """
+  defaultToReminders: Boolean!
+}
+
+"""PostingGoalStatus is used to track the status of a posting goal."""
+enum PostingGoalStatus {
+  AtRisk
+  Hit
+  OnTrack
+}
+
+"""
+Represents a posting goal for a channel, including target, progress, and status information.
+"""
+type PostingGoal {
+  """The target number of posts for this goal."""
+  goal: Int!
+
+  """The end date of the period for this posting goal."""
+  periodEnd: DateTime!
+
+  """The start date of the period for this posting goal."""
+  periodStart: DateTime!
+
+  """The number of posts that are scheduled to be sent for this goal."""
+  scheduledCount: Int!
+
+  """
+  The number of posts that have been sent (published or ingested) for this goal.
+  """
+  sentCount: Int!
+
+  """The current status of the posting goal."""
+  status: PostingGoalStatus!
+}
+
+"""Link Shortening Configuration"""
+type LinkShorteningConfig {
+  """
+  Domain of the link shortener - eg buff.ly, dub.co,
+  or the user's custom domain.
+  """
+  domain: String!
+
+  """
+  Human readable string to describe the link shortening
+  service.
+  """
+  name: String!
+}
+
+"""Settings for link shortening"""
+type ChannelLinkShortening {
+  """Configuration of link shortening integration. Null if disabled."""
+  config: LinkShorteningConfig
+
+  """If link shortening is enabled for the channel"""
+  isEnabled: Boolean!
+}
+
+"""Channel entity"""
+type Channel {
+  """
+  The ID of the channel
+  Source: mapper from channel collection - channel._id
+  Defined in: both proposals
+  """
+  id: ChannelId!
+
+  """
+  The allowed actions for the current user
+  Source: field resolver
+  Defined in: new proposal
+  """
+  allowedActions: [ChannelAction!]!
+
+  """
+  The avatar URL of the channel
+  Source: mapper from channel collection - channel.avatar
+  Defined in: both proposals
+  """
+  avatar: String!
+
+  """
+  Formatted name of the channel service and type: e.g. 'Twitter Profile' or 'Facebook Page'
+  Source: mapper from channel collection - channel.service and channel.type
+  Defined in: current implementation
+  """
+  descriptor: String!
+
+  """
+  The display name of the channel - nullable (reason?)
+  Source: mapper from channel collection - channel.displayName
+  Defined in: current implementation
+  """
+  displayName: String
+
+  """
+  The channel's URL on the social network (e.g. instagram.com/username or facebook.com/page)
+  Source: field resolver
+  Returns null if the channel is not supported
+  """
+  externalLink: String
+
+  """
+  Whether at least one member of the orginization who have access to this channel
+  also has a user device registered for push notifications
+  """
+  hasActiveMemberDevice: Boolean!
+
+  """
+  Indicates if the channel is properly connected to Buffer
+  Source: mapper from channel collection - channel.credentials.invalid
+  Defined in: both proposals
+  """
+  isDisconnected: Boolean!
+
+  """
+  Indicates if the channel is locked - Locked channels can't be used for posting.
+  A channel can be locked when the organization downgrades and reduces the channel quantity of their plan.
+  Source: mapper from channel collection - channel.isLocked
+  Defined in: both proposals
+  """
+  isLocked: Boolean!
+
+  """
+  Indicates if the channel was recently created (in less than 10 seconds). This is used to determine the redirect modal after channel authorization
+  Source: mapper from channel collection - channel.createdAt comparison with current time
+  Defined in: current implementation
+  """
+  isNew: Boolean!
+
+  """
+  Indicates is the queue is paused for the channel. A paused queue means schedules posts won't be published.
+  Source: Field resolver - From profiles collection - profile.paused
+  Defined in: new proposal
+  """
+  isQueuePaused: Boolean!
+
+  """Link Shortening settings for the channel"""
+  linkShortening: ChannelLinkShortening!
+
+  """
+  Metadata or settings depending on the service type - such as the server URL for Mastodon or Location data for Facebook/GPB
+  Source: Field resolver - From channel collection: channel.locationData + channel.serverURL | profile collection: profile.default_to_reminder
+  Defined in: new proposal
+  """
+  metadata: ChannelMetadata
+
+  """
+  The name of the channel - the handle name, username, etc.
+  Source: mapper from channel collection - channel.name
+  Defined in: both proposals
+  """
+  name: String!
+
+  """
+  The organization ID of the channel
+  Source: mapper from channel collection - channel.organizationId
+  Defined in: both proposals
+  """
+  organizationId: OrganizationId!
+
+  """The posting goal for the channel"""
+  postingGoal: PostingGoal
+
+  """
+  Provides the posting slots for each day of the week
+  Source: field resolver based on profiles collection - getPostingSchedule
+  """
+  postingSchedule: [ScheduleV2!]!
+
+  """Products that support a given channel"""
+  products: [Product!]
+
+  """
+  Scopes requested for a given channel - empty array if we don't have them tracked
+  Source: mapper from channel collection - channel.credentials.scopes
+  Defined in: current implementation
+  """
+  scopes: [String]!
+
+  """
+  Represents the social network
+  Source: mapper from channel collection - channel.serviceType
+  Defined in: both proposals
+  """
+  service: Service!
+
+  """
+  Represents the external ID of the channel on social network API
+  Source: mapper from channel collection - channel.serviceId
+  Defined in: both proposals
+  """
+  serviceId: String!
+
+  """
+  Indicates if trending topic suggestions should be shown in the composer.
+  When false, users can still access trends via the trending icon button.
+  Defaults to true for backward compatibility.
+  Source: Field resolver - From profiles collection - profile.show_trending_topic_suggestions
+  """
+  showTrendingTopicSuggestions: Boolean!
+
+  """
+  The timezone of the channel - Default if not set is Europe/London
+  Source: field resolver based on profiles collection - timezone
+  Defined in: both proposals
+  """
+  timezone: String!
+
+  """
+  The type of the channel - Page, Profile, Business, Group, Account, etc.
+  Source: mapper from channel collection - channel.type
+  Defined in: both proposals
+  """
+  type: ChannelType!
+
+  """Weekly posting limit for the channel"""
+  weeklyPostingLimit: WeeklyPostingLimit @deprecated(reason: "This field is not used anymore")
+
+  """
+  The creation date of the channel
+  Source: mapper from channel collection - channel.createdAt
+  Defined in: both proposals
+  """
+  createdAt: DateTime!
+
+  """
+  The last time the channel was updated
+  Source: mapper from channel collection - channel.updatedAt
+  Defined in: both proposals
+  """
+  updatedAt: DateTime!
+}
+
+"""
+Posting limit status at an intended posting time. For X, counts describe the
+busiest rolling 24-hour window affected by adding a post at that time, including
+later scheduled posts. Other networks use the channel's local calendar day.
+Counts include existing posts only, excluding the proposed post.
+"""
+type DailyPostingLimitStatus {
+  """The channel ID this status refers to."""
+  channelId: ChannelId!
+
+  """
+  Whether adding a post at the requested time would exceed the posting limit.
+  """
+  isAtLimit: Boolean!
+
+  """The network daily posting limit. Null means unlimited."""
+  limit: Int
+
+  """Number of existing scheduled posts in the evaluated window."""
+  scheduled: Int!
+
+  """Number of existing sent posts in the evaluated window."""
+  sent: Int!
+}
+
+"""Input for the dailyPostingLimits query."""
+input DailyPostingLimitsInput {
+  """
+  List of channel IDs to check limits for. All channels must belong to the same organization.
+  """
+  channelIds: [ChannelId!]!
+
+  """
+  The intended posting time. Defaults to now if not provided.
+  For X, the exact time determines the affected rolling 24-hour windows.
+  For other networks, the date selects the channel's local calendar day.
+  """
+  date: DateTime
+}
+
+"""Filter to pass when fetching channels."""
+input ChannelsFiltersInput {
+  """
+  If not defined, it returns all channels
+  Else,
+    if true, it only returns locked channels
+    if false, it only returns not locked channels
+  """
+  isLocked: Boolean
+
+  """
+  If not passed, it return all channels
+  Else, it filters the channels based on what the product supports.
+  """
+  product: Product
+}
+
+"""Input to pass when fetching channels."""
+input ChannelsInput {
+  """A list of option filters - passing null means we don't want to filter"""
+  filter: ChannelsFiltersInput
+
+  """The Organization id to fetch channels for"""
+  organizationId: OrganizationId!
+}
+
+"""Input for the channel query"""
+input ChannelInput {
+  """The ID of the channel to be retrieved"""
+  id: ChannelId!
+}
+
+"""
+The WhatsApp phone's connection details, without credentials or synchronization request IDs.
+"""
+type WhatsAppMetadata {
+  """The Meta business portfolio that owns the WhatsApp Business Account."""
+  businessPortfolioId: String!
+
+  """
+  When Buffer last confirmed the WABA subscription. Null before confirmation.
+  """
+  lastSubscribedAt: DateTime
+
+  """Meta's ID for the business phone."""
+  phoneNumberId: String!
+
+  """The WhatsApp Business Account that owns the phone."""
+  wabaId: String!
+}
+
+"""Input for the `aggregatedPostMetrics` query."""
+input AggregatedPostMetricsInput {
+  """
+  Optional list of channel IDs to filter by. When omitted (null), the
+  aggregate spans every channel in the organization the actor has
+  insights access to. When set to an empty array, no channels match and
+  the result is empty.
+  """
+  channelIds: [ChannelId!]
+
+  """
+  End of the aggregation window. Consumers typically pass UTC midnight of
+  the last calendar day in the window (the backend treats the range as
+  inclusive of that day), for example `2026-01-31T00:00:00Z`. Date range
+  is capped to 365 days.
+  """
+  endDateTime: DateTime!
+
+  """The organization ID"""
+  organizationId: OrganizationId!
+
+  """
+  Start of the aggregation window. Consumers typically pass UTC midnight
+  of the first calendar day in the window, for example
+  `2026-01-01T00:00:00Z`. Must be no more than 2 years before now; older
+  requests are rejected.
+  """
+  startDateTime: DateTime!
+
+  """
+  Filter to posts with specific tags.
+  When omitted, all posts are included regardless of tags.
+  """
+  tags: TagComparator
+}
+
+"""
+Aggregated post metrics across a filtered post set. Each entry in
+`metrics` mirrors the shape of a `Post.metrics` entry; the total number
+of matched posts is carried as a regular `PostMetric` entry with
+`type: postCount`.
+"""
+type AggregatedPostMetrics {
+  """
+  Normalized metric aggregates across the matched posts. Always includes
+  a baseline trio (`postCount`, `reactions`, `comments`) — posts on
+  networks that don't track reactions or comments contribute 0 to those
+  totals. Beyond the baseline, additional metric types are included only
+  when every channel in the filter set supports them.
+  """
+  metrics: [PostMetric!]!
+
+  """
+  The latest `metricsUpdatedAt` across the matched posts, indicating the
+  freshness of the aggregate. Metrics are refreshed daily, so values can
+  be up to ~24h behind the source network. Null when no posts matched
+  the filter.
+  """
+  metricsUpdatedAt: DateTime
+}
+
+"""
+List of possible types for a Post. Some services may have different types (e.g., Instagram has story, reel, post but Twitter has only post)
+"""
+enum PostType {
+  carousel
+  event
+  ghost_post
+  offer
+  post
+  reel
+  short
+  story
+  thread
+  whats_new
+}
+
+"""
+List of possible metrics available for a Post.
+
+Values fall into three groups:
+- **Cross-network normalized** (reactions, comments, shares, reposts, reach, impressions, views, clicks, engagementRate): Used wherever a concept maps cleanly across networks. Per-network adapters normalize their native names (e.g., Instagram `likes` → `reactions`, Twitter `retweets` → `reposts`).
+- **Network-specific** (saves, follows, quotes, viewers, totalTimeWatched, averageTimeWatched, likes, freeSubscriptions, paidSubscriptions): Real metrics that don't have a cross-network equivalent. `likes` is intentionally distinct from `reactions` on Facebook — Facebook's Graph API surfaces them separately. `freeSubscriptions` and `paidSubscriptions` are Substack's per-Note subscription attribution; no other network reports it.
+- **Aggregation-only** (postCount): Meaningful only on aggregate endpoints; never emitted per-post.
+
+Deprecated values are pre-normalization legacy or tied to features being removed. They're kept in the enum for backwards compatibility until clients migrate.
+"""
+enum PostMetricType {
+  """
+  Average time watched, in seconds, for video-style posts (TikTok, Instagram Reels).
+  """
+  averageTimeWatched
+
+  """How many times people clicked on your post."""
+  clicks
+
+  """
+  The count of comments and replies on your post. Unified across networks (Threads `replies` maps here).
+  """
+  comments
+
+  """
+  The percentage of people who interacted with your post compared to how many saw it. Unit: percentage.
+  """
+  engagementRate
+
+  """
+  Deprecated: not emitted by any per-network definition. Use `reactions` instead — Twitter and Mastodon favorites normalize into `reactions`. Will be removed on 2026-12-01.
+  """
+  favorites @deprecated(reason: "Not emitted by any per-network definition; use `reactions` instead. Will be removed on 2026-12-01.")
+
+  """The number of new followers gained from this post (Instagram)."""
+  follows
+
+  """The number of free subscriptions Substack attributes to this Note."""
+  freeSubscriptions
+
+  """
+  How many times your post was shown on screen. May include multiple views by the same person — useful for spotting how often the content gets surfaced.
+  """
+  impressions
+
+  """
+  The Like-reaction subcount on Facebook. Distinct from `reactions` (which is the total of all reaction types — Like, Love, Care, Haha, Wow, Sad, Angry); Facebook's Graph API reports them separately and we mirror that.
+  """
+  likes
+
+  """
+  Deprecated: StartPage link-clicks metric. StartPage is being deprecated as a product. Will be removed on 2026-12-01.
+  """
+  link_clicks @deprecated(reason: "StartPage is being deprecated as a product. Will be removed on 2026-12-01.")
+
+  """
+  Deprecated catch-all from pre-normalization. Never emitted. Will be removed on 2026-12-01.
+  """
+  other @deprecated(reason: "Catch-all from pre-normalization; never emitted. Will be removed on 2026-12-01.")
+
+  """The number of paid subscriptions Substack attributes to this Note."""
+  paidSubscriptions
+
+  """
+  The count of posts included in an aggregated response. Only meaningful on aggregate endpoints — never emitted per-post.
+  """
+  postCount
+
+  """How many times your post was quoted (Threads)."""
+  quotes
+
+  """The number of unique people who saw your post."""
+  reach
+
+  """
+  How many people reacted to your post. Unified across networks: Instagram/Twitter `likes`, Mastodon `favorites`, etc. all map to this value.
+  """
+  reactions
+
+  """
+  Deprecated: not emitted by any per-network definition. Use `reposts` instead — Mastodon reblogs normalize into `reposts`. Will be removed on 2026-12-01.
+  """
+  reblogs @deprecated(reason: "Not emitted by any per-network definition; use `reposts` instead. Will be removed on 2026-12-01.")
+
+  """
+  Deprecated: not emitted by any per-network definition. Pre-normalization legacy from the Pinterest era. Will be removed on 2026-12-01.
+  """
+  repins @deprecated(reason: "Not emitted by any per-network definition. Will be removed on 2026-12-01.")
+
+  """
+  Deprecated: not emitted by any per-network definition. Use `comments` instead — replies are normalized into `comments` on the networks that distinguish them (Threads). Will be removed on 2026-12-01.
+  """
+  replies @deprecated(reason: "Not emitted by any per-network definition; use `comments` instead. Will be removed on 2026-12-01.")
+
+  """
+  How many times your post was reposted by others. Twitter `retweets`, Mastodon `reblogs`, Threads `reposts` all normalize to this value.
+  """
+  reposts
+
+  """
+  Deprecated: not emitted by any per-network definition. Use `reposts` instead — Twitter retweets normalize into `reposts`. Will be removed on 2026-12-01.
+  """
+  retweets @deprecated(reason: "Not emitted by any per-network definition; use `reposts` instead. Will be removed on 2026-12-01.")
+
+  """
+  How many times people saved your post (Instagram, Pinterest). A strong signal that the content is worth revisiting.
+  """
+  saves
+
+  """How many times your post was shared or forwarded by others."""
+  shares
+
+  """
+  Total time watched, in minutes, for video-style posts (LinkedIn, TikTok, Instagram Reels).
+  """
+  totalTimeWatched
+
+  """Unique viewer count for video-style posts (LinkedIn)."""
+  viewers
+
+  """
+  How many times your post was viewed. Used for video-style posts and on networks that report views distinctly from impressions.
+  """
+  views
+}
+
+"""The unit representing the value of a PostMetric."""
+enum PostMetricUnit {
+  """An integer count (e.g. number of reactions, impressions, reach)."""
+  count
+
+  """A percentage value between 0 and 100 (e.g. engagement rate)."""
+  percentage
+}
+
+"""
+A single metric for a post (or an entry in an aggregated metrics response).
+"""
+type PostMetric {
+  """A human-readable description of what the metric represents."""
+  description: String!
+
+  """The human-readable name of the metric (e.g. "Reactions", "Eng. Rate")."""
+  name: String!
+
+  """
+  The type of metric. Cross-network metrics use unified naming (`reactions`,
+  `comments`, etc.); network-specific metrics retain their network's
+  vocabulary (`saves`, `quotes`, etc.). See `PostMetricType` for the full
+  catalog including deprecated values.
+  """
+  type: PostMetricType!
+
+  """The unit (count vs percentage) of `value`."""
+  unit: PostMetricUnit!
+
+  """
+  The metric value. Defaults to 0 when the network did not report the metric.
+  """
+  value: Float!
+}
+
+"""Asset types"""
+enum AssetType {
+  document
+  image
+  video
+}
+
+"""Input for the createSnippet mutation."""
+input CreateSnippetInput {
+  """Display name of the snippet."""
+  name: String!
+
+  """The organization that owns the snippet."""
+  organizationId: OrganizationId!
+
+  """The hashtags, as the text that is inserted into a post."""
+  text: String!
+}
+
+"""Success response of the createSnippet mutation."""
+type CreateSnippetSuccess {
+  """The snippet that was created."""
+  snippet: Snippet!
+}
+
+"""
+All possible responses for createSnippet. VoidMutationError reports an
+empty or too long name or text.
+"""
+union CreateSnippetPayload = CreateSnippetSuccess | VoidMutationError
+
+"""Input for the updateSnippet mutation. Both name and text are replaced."""
+input UpdateSnippetInput {
+  """The snippet to update."""
+  id: SnippetId!
+
+  """The new display name of the snippet."""
+  name: String!
+
+  """The organization that owns the snippet."""
+  organizationId: OrganizationId!
+
+  """The new hashtags, as the text that is inserted into a post."""
+  text: String!
+}
+
+"""Success response of the updateSnippet mutation."""
+type UpdateSnippetSuccess {
+  """The snippet after the update."""
+  snippet: Snippet!
+}
+
+"""
+All possible responses for updateSnippet. VoidMutationError reports an
+empty or too long name or text.
+"""
+union UpdateSnippetPayload = UpdateSnippetSuccess | VoidMutationError
+
+"""Input for the deleteSnippet mutation."""
+input DeleteSnippetInput {
+  """The snippet to delete."""
+  id: SnippetId!
+
+  """The organization that owns the snippet."""
+  organizationId: OrganizationId!
+}
+
+"""Success response of the deleteSnippet mutation."""
+type DeleteSnippetSuccess {
+  """The id of the deleted snippet."""
+  id: SnippetId!
+}
+
+"""All possible responses for deleteSnippet."""
+union DeleteSnippetPayload = DeleteSnippetSuccess | VoidMutationError
+
+"""Input for the snippets query."""
+input SnippetsInput {
+  """The organization whose snippets to return."""
+  organizationId: OrganizationId!
+}
+
+"""An edge in a snippets connection."""
+type SnippetEdge {
+  """A cursor for pagination."""
+  cursor: String!
+
+  """The snippet at the end of the edge."""
+  node: Snippet!
+}
+
+"""A paginated connection of snippets, sorted by name."""
+type SnippetsConnection {
+  """The list of snippet edges."""
+  edges: [SnippetEdge!]!
+
+  """Pagination information for the connection."""
+  pageInfo: PaginationPageInfo!
+}
+
+"""
+A named set of hashtags that a team member saves once and inserts into posts.
+"""
+type Snippet {
+  """Unique identifier of the snippet."""
+  id: SnippetId!
+
+  """Display name of the snippet."""
+  name: String!
+
+  """The hashtags, as the text that is inserted into a post."""
+  text: String!
+}
+
+"""List of possible actions that can be performed on a note"""
+enum NoteAction {
+  """The user can delete the note."""
+  deleteNote
+
+  """The user can add or remove their emoji reactions on the note."""
+  reactToNote
+
+  """The user can update the note."""
+  updateNote
+}
+
+"""Note entity"""
+type Note {
+  """The unique identifier of the note."""
+  id: NoteId!
+
+  """The allowed actions a user can perform on the note."""
+  allowedActions: [NoteAction!]!
+
+  """
+  The author of the note - null if the user is deleted or left the organization.
+  """
+  author: Author!
+
+  """The content of the note."""
+  text: String!
+
+  """The type of the note."""
+  type: NoteType!
+
+  """The date and time when the note was created."""
+  createdAt: DateTime!
+
+  """The date and time when the note was last edited."""
+  updatedAt: DateTime
+}
+
+"""A collaboration Note in a Post or ContentItem thread."""
+type CollaborationNote {
+  """The Note ID."""
+  id: NoteId!
+
+  """The actions the current account can perform on the Note."""
+  allowedActions: [NoteAction!]!
+
+  """The annotations in the Note text."""
+  annotations: [Annotation!]!
+
+  """The author, or null when the account no longer exists."""
+  author: Author
+
+  """The author's Account ID, including when the account no longer exists."""
+  authorId: AccountId!
+
+  """The Note text."""
+  text: String!
+
+  """The date and time of Note creation."""
+  createdAt: DateTime!
+
+  """The date and time of the last Note update."""
+  updatedAt: DateTime!
+}
+
+"""The entity whose Notes thread to use. Set exactly one field."""
+input CollaborationNoteSubjectInput {
+  """
+  The ContentItem ID. Selects the ContentItem's own thread, not the threads of
+  its Posts.
+  """
+  contentItemId: ContentItemId
+
+  """The Post ID."""
+  postId: PostId
+}
+
+"""The content for a new collaboration Note."""
+input CreateCollaborationNoteInput {
+  """The annotations for the Note. Omit or pass null to use an empty list."""
+  annotations: [AnnotationInput!]
+
+  """The entity whose Notes thread gets the Note."""
+  subject: CollaborationNoteSubjectInput!
+
+  """The Note text."""
+  text: String!
+}
+
+"""The content that replaces a collaboration Note."""
+input UpdateCollaborationNoteInput {
+  """
+  The annotations for the Note. Omit or pass null to replace them with an empty list.
+  """
+  annotations: [AnnotationInput!]
+
+  """The Note ID."""
+  noteId: NoteId!
+
+  """The replacement Note text."""
+  text: String!
+}
+
+"""The collaboration Note to delete."""
+input DeleteCollaborationNoteInput {
+  """The Note ID."""
+  noteId: NoteId!
+}
+
+"""The result of a successful collaboration Note creation."""
+type CreateCollaborationNoteSuccess {
+  """The new Note and its cursor."""
+  edge: CollaborationNoteEdge!
+}
+
+"""The result of a successful collaboration Note update."""
+type UpdateCollaborationNoteSuccess {
+  """The updated Note."""
+  note: CollaborationNote!
+}
+
+"""The result of a successful collaboration Note deletion."""
+type DeleteCollaborationNoteSuccess {
+  """The deleted Note ID."""
+  noteId: NoteId!
+}
+
+"""
+Error returned when a Note is created in a thread that accepts no new Notes.
+Existing Notes in the thread stay readable.
+"""
+type CollaborationNoteThreadClosedError implements MutationError {
+  """Error message"""
+  message: String!
+}
+
+"""The possible results from collaboration Note creation."""
+union CreateCollaborationNotePayload = CreateCollaborationNoteSuccess | InvalidInputError | LimitReachedError | CollaborationNoteThreadClosedError
+
+"""The possible results from collaboration Note update."""
+union UpdateCollaborationNotePayload = UpdateCollaborationNoteSuccess | InvalidInputError
+
+"""The possible results from collaboration Note deletion."""
+union DeleteCollaborationNotePayload = DeleteCollaborationNoteSuccess | VoidMutationError
+
+"""The Notes thread to read."""
+input CollaborationNotesInput {
+  """The entity whose Notes thread to read."""
+  subject: CollaborationNoteSubjectInput!
+}
+
+"""A page of authorized Notes."""
+type CollaborationNotesConnection {
+  """The Notes in this page."""
+  edges: [CollaborationNoteEdge!]!
+
+  """The pagination information for this page."""
+  pageInfo: PaginationPageInfo!
+}
+
+"""A Note and its pagination cursor."""
+type CollaborationNoteEdge {
+  """The opaque cursor for this Note."""
+  cursor: String!
+
+  """The Note."""
+  node: CollaborationNote!
+}
+
+"""Organization is a representation of a Buffer Organization."""
+type Organization {
+  """The ID of the organization."""
+  id: OrganizationId!
+
+  """The total number of channels connected to the organization."""
+  channelCount: Int!
+
+  """
+  The limits of the organization. Can be used to check if the organization has reached the limit of channels, members, etc.
+  """
+  limits: OrganizationLimits!
+
+  """
+  The members of the organization. Can be used to check the total number of members in the organization. In the future, it might contain more information about the members.
+  """
+  members: MemberConnection!
+
+  """The name of the organization."""
+  name: String!
+
+  """The owner email of the organization."""
+  ownerEmail: String!
+
+  """
+  Whether the requesting actor should be sent through 2FA setup before they
+  can use this organization. Derived: true only when the org has
+  `settings.enforce2FA` ON and the actor has no 2FA configured on their own
+  account.
+  
+  This is the single source of truth for the forced-2FA gate; app-shell and
+  publish-frontend redirect to the setup flow when it's true. Exposed to the
+  API gateway so any stitched consumer reads the same value.
+  """
+  shouldEnforce2FASetup: Boolean!
+}
+
+"""
+Represents the members connection edge. Later, we can add the list of members with the page info to follow our connection edge pattern.
+"""
+type MemberConnection {
+  """
+  The total count of team members counting the org owner and team members from the Publish DB.
+  """
+  totalCount: Int!
+}
+
+"""
+Resource limits for an organization including channels, members, and content limits
+"""
+type OrganizationLimits {
+  """The maximum number of channels allowed for the organization."""
+  channels: Int!
+
+  """
+  The maximum number of content generations allowed for the organization.
+  """
+  generateContent: Int!
+
+  """The maximum number of idea groups allowed for the organization."""
+  ideaGroups: Int!
+
+  """The maximum number of ideas allowed for the organization."""
+  ideas: Int!
+
+  """The maximum number of members allowed for the organization."""
+  members: Int!
+
+  """The maximum number of post templates allowed for the organization."""
+  postTemplates: Int!
+
+  """The maximum number of saved replies allowed for the organization."""
+  savedReplies: Int!
+
+  """The maximum number of scheduled posts allowed for the organization."""
+  scheduledPosts: Int!
+
+  """The maximum number of scheduled stories allowed per channel."""
+  scheduledStoriesPerChannel: Int!
+
+  """The maximum number of scheduled threads allowed per channel."""
+  scheduledThreadsPerChannel: Int!
+
+  """The maximum number of tags allowed for the organization."""
+  tags: Int!
+}
+
+"""deletePost mutation deletes a post by id."""
+input DeletePostInput {
+  """Post id to delete."""
+  id: PostId!
+}
+
+"""All possible response types for the deletePost mutation."""
+union DeletePostPayload = DeletePostSuccess | VoidMutationError
+
+"""deletePost success response returns the post id that was deleted."""
+type DeletePostSuccess {
+  """Post id that was delete."""
+  id: PostId!
+}
+
+"""
+Success response returns the full up-to-date post from after the action was performed.
+"""
+type PostActionSuccess {
+  """Post on which the action was successfully performed."""
+  post: Post!
+}
+
+"""
+Create post's request input.
+
+Note: `metadata.{service}.linkAttachment` is mutually exclusive with a non-empty `assets`
+array. Input providing both is rejected.
+"""
+input CreatePostInput {
+  """If this post was created with the help of AI"""
+  aiAssisted: Boolean
+
+  """Ordered list of assets on this post."""
+  assets: [AssetInput!]! = []
+
+  """Channel's Id for which we want to create the post"""
+  channelId: ChannelId!
+
+  """Is set when the Post is generated from a Draft"""
+  draftId: DraftId
+
+  """Date when the post is scheduled to be published"""
+  dueAt: DateTime
+
+  """Is set when the Post is generated from an Idea"""
+  ideaId: IdeaId
+
+  """Metadata of the post which differs based on the social network/service"""
+  metadata: PostInputMetaData
+
+  """How the post is being scheduled."""
+  mode: ShareMode!
+
+  """
+  Submit the post for approval instead of scheduling it. A post submitted for
+  approval is always a draft, so this conflicts with turning `saveToDraft` off.
+  
+  Only valid when your posting policy on the target channel requires approval.
+  """
+  needsApproval: Boolean! = false
+
+  """
+  If true, saves the post as a draft instead of scheduling it.
+  When saving as draft:
+  - Post status will be 'draft' instead of 'buffer'
+  - Posting limits are not checked
+  - The post will not be published until explicitly scheduled
+  """
+  saveToDraft: Boolean
+
+  """
+  Scheduling type to indicate notification publishing or automatic publishing
+  """
+  schedulingType: SchedulingType!
+
+  """source where the composer was initiated from, used for tracking."""
+  source: String
+
+  """List of tag IDs"""
+  tagIds: [TagId!]
+
+  """
+  Text content of the Post.
+  
+  Note: for threaded posts, this needs to match the first item in the `thread` array.
+  """
+  text: String
+}
+
+"""
+A change to a post's approval state, for a post that is already a draft.
+"""
+enum PostApprovalChange {
+  """Submit the draft for approval."""
+  request
+
+  """
+  Withdraw a pending approval request, returning the post to a plain draft.
+  """
+  revert
+}
+
+"""
+Edit post's request input.
+
+Note: `metadata.{service}.linkAttachment` is mutually exclusive with a non-empty `assets`
+array. Input providing both is rejected.
+"""
+input EditPostInput {
+  """ID of the post to edit"""
+  id: PostId!
+
+  """If this post was edited with the help of AI"""
+  aiAssisted: Boolean
+
+  """
+  Change the post's approval state alongside this edit. Leave unset to keep the
+  post's current approval state.
+  
+  Only valid when your posting policy on the post's channel requires approval,
+  and only on your own drafts. Asking for the state the post is already in does
+  nothing.
+  """
+  approvalChange: PostApprovalChange
+
+  """
+  Ordered list of assets on this post. Omit to preserve the existing list,
+  pass an empty array to clear it
+  """
+  assets: [AssetInput!]
+
+  """Is set when the Post is generated from a Draft"""
+  draftId: DraftId
+
+  """Date when the post is scheduled to be published"""
+  dueAt: DateTime
+
+  """Is set when the Post is generated from an Idea"""
+  ideaId: IdeaId
+
+  """Metadata of the post which differs based on the social network/service"""
+  metadata: PostInputMetaData
+
+  """
+  How the post is being scheduled. Omit the field or pass null to make no
+  scheduling change — null does not clear or reset the schedule: a scheduled post
+  keeps its current share mode, queue slot, and any custom time, and the edit
+  applies only the other provided fields. Pass a non-null ShareMode to apply that
+  mode.
+  """
+  mode: ShareMode
+
+  """
+  If true, saves the post as a draft instead of keeping it scheduled.
+  When saving as draft:
+  - Post status will be 'draft' instead of 'buffer'
+  - The post will not be published until explicitly scheduled
+  """
+  saveToDraft: Boolean
+
+  """
+  Scheduling type to indicate notification publishing or automatic publishing.
+  
+  Omit it, or send null, to leave the post publishing the way it already does.
+  """
+  schedulingType: SchedulingType
+
+  """source where the composer was initiated from, used for tracking."""
+  source: String
+
+  """tags"""
+  tagIds: [TagId!]
+
+  """
+  Text content of the Post. Omit the field to keep the current text; pass an
+  empty string or null to clear it.
+  
+  Note: for threaded posts, this needs to match the first item in the `thread` array.
+  """
+  text: String
+}
+
+"""How the post is being scheduled."""
+enum ShareMode {
+  addToQueue
+  customScheduled
+  shareNext
+  shareNow
+}
+
+"""Create post's request response payload."""
+union PostActionPayload = PostActionSuccess | NotFoundError | UnauthorizedError | UnexpectedError | RestProxyError | LimitReachedError | InvalidInputError
+
+"""Target position within a channel's queue that a post can be moved to."""
+enum QueuePosition {
+  """Move the post to the bottom of the queue, taking the last slot."""
+  bottom
+
+  """Move the post to the top of the queue, taking the next available slot."""
+  top
+}
+
+"""
+movePostInQueue mutation moves a queued post to the top or bottom of its channel's queue.
+"""
+input MovePostInQueueInput {
+  """ID of the post to move."""
+  id: PostId!
+
+  """Target position within the channel's queue."""
+  position: QueuePosition!
+}
+
+"""
+All possible response types that can be returned by movePostInQueue mutation.
+"""
+union MovePostInQueuePayload = PostActionSuccess | VoidMutationError
+
+"""List of possible statuses for a Post"""
+enum PostStatus {
+  draft
+  error
+  needs_approval
+  scheduled
+  sending
+  sent
+}
+
+"""List of specific post types available for Google Business profiles"""
+enum PostTypeGoogleBusiness {
+  event
+  offer
+  whats_new
+}
+
+"""List of specific post types available for Facebook"""
+enum PostTypeFacebook {
+  post
+  reel
+  story
+}
+
+"""List of possible ways to create a Post"""
+enum PostVia {
+  api
+  buffer
+  network
+}
+
+"""List of possible actions that can be performed on a Post"""
+enum PostAction {
+  addPostNote
+  addPostToQueue
+  approvePost
+  cancelPostRecurrence
+  copyPostLink
+  createPostRecurrence
+  deletePost
+  duplicatePost
+  editPostRecurrence
+  movePostToDraft
+  publishPostNext
+  publishPostNow
+  rejectPost
+  removePostScheduledTime
+  requestPostApproval
+  revertPostApprovalRequest
+  sharePostLink
+  updatePost
+  updatePostSchedule
+  updatePostTags
+  updateShopGridLink
+  viewPost
+}
+
+"""List of possible statuses for a notification"""
+enum NotificationStatus {
+  markedAsPublished
+  notified
+}
+
+"""Post publishing error"""
+type PostPublishingError {
+  """Error message to display"""
+  message: String!
+
+  """The original error from the publishing service (internal use only)"""
+  rawError: String
+
+  """Link to a help center article to help resolve the error"""
+  supportUrl: String
+}
+
+"""
+Indicates whether the post was scheduled for notification publishing or automatic publishing
+"""
+enum SchedulingType {
+  """Buffer's publishing workers send the post, with nobody having to act"""
+  automatic
+
+  """Buffer reminds someone to publish the post by hand"""
+  notification
+}
+
+"""Post entity"""
+type Post {
+  """The ID of the post"""
+  id: PostId!
+
+  """Indicates what actions the current account can perform on the post"""
+  allowedActions: [PostAction!]!
+
+  """assets"""
+  assets: [Asset!]!
+
+  """Represents the user who created the post"""
+  author: Author
+
+  """channel"""
+  channel: Channel!
+
+  """channel ID (faster than resolving the channnel.id)"""
+  channelId: ChannelId!
+
+  """channel service (faster than resolving the channnel.service)"""
+  channelService: Service!
+
+  """
+  The content item this post belongs to. Null when the post belongs to no
+  content item.
+  """
+  contentItemId: ContentItemId
+
+  """Date when the post is scheduled to be published"""
+  dueAt: DateTime
+
+  """error"""
+  error: PostPublishingError
+
+  """The external URL of the post at the destination service"""
+  externalLink: String
+
+  """Is set when the Post is generated from an Idea"""
+  ideaId: IdeaId
+
+  """Indicates whether time to publish was manually selected by the user"""
+  isCustomScheduled: Boolean!
+
+  """
+  Metadata of the post which differs based on the social network/service
+  @see post.metadata.graphql
+  """
+  metadata: PostMetadata
+
+  """
+  Metrics for the sent post. If post is not yet sent, this field will be null
+  """
+  metrics: [PostMetric!]
+
+  """
+  Timestamp of when `metrics` were last refreshed from the network. Null
+  until the daily ingestion job has processed the post. Buffer pulls
+  fresh metrics once per day, so this can lag the network value by ~24h.
+  """
+  metricsUpdatedAt: DateTime
+
+  """
+  Legacy Notes on this Post. Notes added in Buffer's Notes aren't included;
+  use `collaborationNotes` instead.
+  """
+  notes: [Note!]! @deprecated(reason: "Legacy Notes. Use collaborationNotes.")
+
+  """notificationStatus: notified or markedAsPublished"""
+  notificationStatus: NotificationStatus
+
+  """
+  How the post publishes: `notification` for a reminder that asks someone to
+  publish it by hand, `automatic` for one the publishing workers send.
+  """
+  schedulingType: SchedulingType
+
+  """Date when the post is published"""
+  sentAt: DateTime
+
+  """Indicates whether the post was shared via publish now action"""
+  sharedNow: Boolean!
+
+  """
+  Indicates the share mode of the post (e.g., addToQueue, shareNext, shareNow, customScheduled)
+  """
+  shareMode: ShareMode!
+
+  """status"""
+  status: PostStatus!
+
+  """tags - sorted by name in ascending order"""
+  tags: [Tag!]!
+
+  """Text content of the Post"""
+  text: String!
+
+  """Indicates if the post is created from Buffer or the API"""
+  via: PostVia!
+
+  """Date when the post was created"""
+  createdAt: DateTime!
+
+  """Date when the post was updated"""
+  updatedAt: DateTime!
+}
+
+"""List of possible types for an annotation"""
+enum AnnotationType {
+  annotation
+  bold
+  bulletedListItem
+  cashtag
+  hashtag
+  heading
+  italic
+  mention
+  orderedListItem
+  strikethrough
+  url
+}
+
+"""List of possible types for GBP cta"""
+enum GoogleBusinessPostActionType {
+  book
+  call
+  learn_more
+  none
+  order
+  shop
+  signup
+}
+
+"""List of privacy types"""
+enum YoutubePrivacy {
+  private
+  public
+  unlisted
+}
+
+"""List of license types"""
+enum YoutubeLicense {
+  creativeCommon
+  youtube
+}
+
+"""Annotation representing all the entities in the text"""
+type Annotation {
+  """
+  The content of the annotation. Annotations can sometimes be different from the actual text content.
+  E.g., Mastodon mentions have 'text: @buffer', but includes the server name in the content, 'content: @buffer@threads.net'
+  """
+  content: String!
+
+  """The display value, when present"""
+  displayValue: String
+
+  """The indices of the annotation in the text"""
+  indices: [Int!]!
+
+  """The service entity ID, when present"""
+  serviceEntityId: String
+
+  """The text representation of the annotation, eg '@buffer'"""
+  text: String!
+
+  """The type of the annotation"""
+  type: AnnotationType!
+
+  """
+  The URL the annotation points to. Empty string when the annotation has no link.
+  """
+  url: String!
+}
+
+"""
+A post authored by the user which is posted to a thread.
+This is commonly used for long-format twitter and meta threads posts to
+allow authored content to span multiple threads.
+Threads are represented as a list of replies, each replying to the previous one.
+"""
+type ThreadedPost {
+  """Media assets of the threaded post"""
+  assets: [Asset!]!
+
+  """
+  Use metadata.{service}.linkAttachment on the thread item instead. This field will be removed on December 15, 2026.
+  """
+  linkAttachment: LinkAttachment @deprecated(reason: "Use metadata.{service}.linkAttachment on the thread item instead. This field will be removed on December 15, 2026.")
+
+  """Service-specific fields for this threaded post"""
+  metadata: ThreadItemMetadata
+
+  """The text body content of the threaded post"""
+  text: String!
+}
+
+"""Bluesky fields on a single item of a thread"""
+type ThreadItemBlueskyMetadata {
+  """Link attachment"""
+  linkAttachment: LinkAttachment
+}
+
+"""Threads fields on a single item of a thread"""
+type ThreadItemThreadsMetadata {
+  """Link attachment"""
+  linkAttachment: LinkAttachment
+}
+
+"""
+Service-specific fields on a single item of a thread. The populated key matches
+the post's service.
+"""
+type ThreadItemMetadata {
+  """Bluesky fields for this thread item"""
+  bluesky: ThreadItemBlueskyMetadata
+
+  """Threads fields for this thread item"""
+  threads: ThreadItemThreadsMetadata
+}
+
+"""
+Common properties for all posts that support threaded replies.
+See ThreadedPost for more details.
+"""
+interface ThreadedPostMetadata {
+  """The list of threaded posts (not paginated)"""
+  thread: [ThreadedPost!]!
+
+  """The number of threaded posts"""
+  threadCount: Int!
+}
+
+"""Common properties for all post metadata types"""
+interface CommonPostMetadata {
+  """Annotations representing entities in the text"""
+  annotations: [Annotation!]!
+
+  """
+  The channel-specific type of the post, eg, post, story, reel for Instagram
+  """
+  type: PostType!
+}
+
+"""Instagram Geolocation"""
+type InstagramGeolocation {
+  """The id of this location"""
+  id: String
+
+  """The name of this location"""
+  text: String
+}
+
+"""
+Instagram fields for reminder-based publishing. Upon the reminder for publishing, the user
+is prompted to copy and paste these fields into the Instagram app to complete the post.
+"""
+type InstagramStickerFields {
+  """Placeholder text for the post's music"""
+  music: String
+
+  """Additional field for any other post content"""
+  other: String
+
+  """Placeholder text for the post's linked products"""
+  products: String
+
+  """Text for the Story or Reel"""
+  text: String
+
+  """Placeholder text for the post's topics (Reels only)"""
+  topics: String
+}
+
+"""Metadata for a GBP post of type Whats new"""
+type GoogleBusinessWhatsNewMetaData {
+  """Action button"""
+  button: GoogleBusinessPostActionType!
+
+  """Link to the action"""
+  link: String
+}
+
+"""Metadata for a GBP post that is an offer"""
+type GoogleBusinessOfferMetaData {
+  """Coupon code for the offer"""
+  code: String
+
+  """End date of the offer"""
+  endDate: DateTime!
+
+  """Link to the offer"""
+  link: String
+
+  """Start date of the offer"""
+  startDate: DateTime!
+
+  """Terms and Conditions"""
+  terms: String
+
+  """Title of the offer"""
+  title: String!
+}
+
+"""Metadata for a GBP post that is an event"""
+type GoogleBusinessEventMetaData {
+  """Action button"""
+  button: GoogleBusinessPostActionType!
+
+  """End date of the event"""
+  endDate: DateTime!
+
+  """End time of the event"""
+  endTime: String @deprecated(reason: "get time from the endDate")
+
+  """Indicate whether the event has a start or end time."""
+  isFullDayEvent: Boolean!
+
+  """Link to the action"""
+  link: String
+
+  """Start date of the event"""
+  startDate: DateTime!
+
+  """Start time of the event"""
+  startTime: String @deprecated(reason: "get time from the startDate")
+
+  """Title of the event"""
+  title: String!
+}
+
+"""GoogleBusiness Metadata details"""
+union GoogleBusinessPostDetails = GoogleBusinessWhatsNewMetaData | GoogleBusinessOfferMetaData | GoogleBusinessEventMetaData
+
+"""Instagram post metadata"""
+type InstagramPostMetadata implements CommonPostMetadata {
+  """Annotations representing entities in the text"""
+  annotations: [Annotation!]!
+
+  """Instagram post's first comment"""
+  firstComment: String
+
+  """Geolocation of the post"""
+  geolocation: InstagramGeolocation
+
+  """Whether the post discloses AI-generated content"""
+  isAiGenerated: Boolean!
+
+  """Shop Grid link for the post"""
+  link: String
+
+  """Indicates whether post should be shared to feed"""
+  shouldShareToFeed: Boolean!
+
+  """Sticker fields for reminder-based publishing"""
+  stickerFields: InstagramStickerFields
+
+  """
+  The channel-specific type of the post, eg, post, story, reel for Instagram
+  """
+  type: PostType!
+}
+
+"""Facebook post metadata"""
+type FacebookPostMetadata implements CommonPostMetadata {
+  """Annotations representing entities in the text"""
+  annotations: [Annotation!]!
+
+  """Facebook post's first comment"""
+  firstComment: String
+
+  """Link attachment"""
+  linkAttachment: LinkAttachment
+
+  """Title of Facebook reel"""
+  title: String
+
+  """
+  The channel-specific type of the post, eg, post, story, reel for Instagram
+  """
+  type: PostType!
+}
+
+"""LinkedIn post metadata"""
+type LinkedInPostMetadata implements CommonPostMetadata {
+  """Annotations representing entities in the text"""
+  annotations: [Annotation!]!
+
+  """LinkedIn post's first comment"""
+  firstComment: String
+
+  """Link attachment"""
+  linkAttachment: LinkAttachment
+
+  """
+  The channel-specific type of the post, eg, post, story, reel for Instagram
+  """
+  type: PostType!
+}
+
+"""Information about the initial author of the Tweet that was retweeted"""
+type RetweetUserMetadata {
+  """Avatar of the user who created the original Tweet"""
+  avatar: String!
+
+  """Name of the user who created the original Tweet"""
+  name: String!
+
+  """Username of the user who created the original Tweet"""
+  username: String!
+}
+
+"""Link data for link preview"""
+interface ScrapedLink {
+  """Description for the scraped link"""
+  text: String!
+
+  """Thumbnails of media available in the link"""
+  thumbnails: [String!]!
+
+  """URL that the link asset has been built from"""
+  url: String!
+}
+
+"""Link attachment"""
+type LinkAttachment implements ScrapedLink {
+  """Full URL that the link asset has been built from"""
+  expandedUrl: String
+
+  """Description for the scraped link"""
+  text: String!
+
+  """Selected thumbnail for this link preview"""
+  thumbnail: String
+
+  """Thumbnails of media available in the link"""
+  thumbnails: [String!]!
+
+  """Title for the link attachment"""
+  title: String!
+
+  """URL that the link asset has been built from"""
+  url: String!
+}
+
+"""Information about the initial Tweet that was retweeted"""
+type RetweetMetadata implements ScrapedLink {
+  """Retweet ID"""
+  id: String!
+
+  """Text of the original tweet"""
+  text: String!
+
+  """Thumbnails to media available in the link"""
+  thumbnails: [String!]!
+
+  """Link to original tweet"""
+  url: String!
+
+  """User who created the original tweet"""
+  user: RetweetUserMetadata!
+
+  """Date when the original tweet was created"""
+  createdAt: DateTime!
+}
+
+"""Twitter post metadata"""
+type TwitterPostMetadata implements CommonPostMetadata & ThreadedPostMetadata {
+  """Annotations representing entities in the text"""
+  annotations: [Annotation!]!
+
+  """Whether the post discloses AI-generated content"""
+  isAiGenerated: Boolean!
+
+  """The details of the tweet being retweeted"""
+  retweet: RetweetMetadata
+
+  """The list of threaded posts (not paginated)"""
+  thread: [ThreadedPost!]!
+
+  """The number of threaded posts"""
+  threadCount: Int!
+
+  """
+  The channel-specific type of the post, eg, post, story, reel for Instagram
+  """
+  type: PostType!
+}
+
+"""A Pinterest board"""
+type PinterestBoard {
+  """The ID of the board"""
+  id: String!
+
+  """The board avatar"""
+  avatar: String
+
+  """The board description"""
+  description: String
+
+  """The board name"""
+  name: String!
+
+  """The ID of the service"""
+  serviceId: String!
+
+  """The board URL"""
+  url: String!
+}
+
+"""Pinterest post metadata"""
+type PinterestPostMetadata implements CommonPostMetadata {
+  """Annotations representing entities in the text"""
+  annotations: [Annotation!]!
+
+  """The board the Pin is saved to"""
+  board: PinterestBoard
+
+  """The title of the Pin"""
+  title: String
+
+  """
+  The channel-specific type of the post, eg, post, story, reel for Instagram
+  """
+  type: PostType!
+
+  """The Pin destination link"""
+  url: String
+}
+
+"""
+Google Business Profile post metadata
+@deprecated: pending proposal for specific GBP post types: update, offer and event metadata types
+"""
+type GoogleBusinessPostMetadata implements CommonPostMetadata {
+  """Annotations representing entities in the text"""
+  annotations: [Annotation!]!
+
+  """Details of the metadata"""
+  details: GoogleBusinessPostDetails
+
+  """Title if available in the given GBP post type: event and offer"""
+  title: String
+
+  """
+  The channel-specific type of the post, eg, post, story, reel for Instagram
+  """
+  type: PostType!
+}
+
+"""Youtube post metadata"""
+type YoutubePostMetadata implements CommonPostMetadata {
+  """Annotations representing entities in the text"""
+  annotations: [Annotation!]!
+
+  """Post category"""
+  category: YoutubeCategory
+
+  """Indicates whether the video allows embedding"""
+  embeddable: Boolean!
+
+  """Whether the post discloses AI-generated content"""
+  isAiGenerated: Boolean!
+
+  """Video license"""
+  license: YoutubeLicense
+
+  """Indicates whether the video is suitable for kids"""
+  madeForKids: Boolean!
+
+  """Indicates whether to notify subscribers on publish video"""
+  notifySubscribers: Boolean!
+
+  """Privacy setting for post"""
+  privacy: YoutubePrivacy
+
+  """Title of the Youtube post"""
+  title: String
+
+  """
+  The channel-specific type of the post, eg, post, story, reel for Youtube
+  """
+  type: PostType!
+}
+
+"""Mastodon post metadata"""
+type MastodonPostMetadata implements CommonPostMetadata & ThreadedPostMetadata {
+  """Annotations representing entities in the text"""
+  annotations: [Annotation!]!
+
+  """Spoiler text hiding the root text of this post"""
+  spoilerText: String
+
+  """The list of threaded posts (not paginated)"""
+  thread: [ThreadedPost!]!
+
+  """The number of threaded posts"""
+  threadCount: Int!
+
+  """
+  The channel-specific type of the post, eg, post, story, reel for Instagram
+  """
+  type: PostType!
+}
+
+"""Tiktok post metadata"""
+type TiktokPostMetadata implements CommonPostMetadata {
+  """Annotations representing entities in the text"""
+  annotations: [Annotation!]!
+
+  """Whether the post discloses AI-generated content (TikTok video only)"""
+  isAiGenerated: Boolean!
+
+  """The title of the TikTok post (for photo posts)"""
+  title: String
+
+  """
+  The channel-specific type of the post, eg, post, story, reel for Instagram
+  """
+  type: PostType!
+}
+
+"""Threads post metadata"""
+type ThreadsPostMetadata implements CommonPostMetadata & ThreadedPostMetadata {
+  """Annotations representing entities in the text"""
+  annotations: [Annotation!]!
+
+  """Link attachment"""
+  linkAttachment: LinkAttachment
+
+  """LocationId associated with the post"""
+  locationId: String
+
+  """Location name associated with the post"""
+  locationName: String
+
+  """The list of threaded posts (not paginated)"""
+  thread: [ThreadedPost!]!
+
+  """The number of threaded posts"""
+  threadCount: Int!
+
+  """Topic associated with the post"""
+  topic: String
+
+  """
+  The channel-specific type of the post, eg, post, story, reel for Instagram
+  """
+  type: PostType!
+}
+
+"""Bluesky post metadata"""
+type BlueskyPostMetadata implements CommonPostMetadata & ThreadedPostMetadata {
+  """Annotations representing entities in the text"""
+  annotations: [Annotation!]!
+
+  """Link attachment"""
+  linkAttachment: LinkAttachment
+
+  """The list of threaded posts (not paginated)"""
+  thread: [ThreadedPost!]!
+
+  """The number of threaded posts"""
+  threadCount: Int!
+
+  """
+  The channel-specific type of the post, eg, post, story, reel for Instagram
+  """
+  type: PostType!
+}
+
+"""Substack post metadata"""
+type SubstackPostMetadata implements CommonPostMetadata {
+  """Annotations representing entities in the text"""
+  annotations: [Annotation!]!
+
+  """Link attachment"""
+  linkAttachment: LinkAttachment
+
+  """
+  The channel-specific type of the post, eg, post, story, reel for Instagram
+  """
+  type: PostType!
+}
+
+"""
+Post metadata union type. Contains all possible types of post metadata.
+"""
+union PostMetadata = InstagramPostMetadata | FacebookPostMetadata | LinkedInPostMetadata | TwitterPostMetadata | PinterestPostMetadata | GoogleBusinessPostMetadata | YoutubePostMetadata | MastodonPostMetadata | TiktokPostMetadata | ThreadsPostMetadata | BlueskyPostMetadata | SubstackPostMetadata
+
+"""Annotation representing all the entities in the text"""
+input AnnotationInputFacebook {
+  """The content of the annotation, e.g. '107509875938399'"""
+  content: String!
+
+  """
+  The indices of the annotation in the text, e.g. [6, 9] (from 6 to 9 characters in the text)
+  """
+  indices: [Int!]!
+
+  """The text representation of the annotation, eg 'Buffer'"""
+  text: String!
+
+  """
+  The URL the annotation points to, e.g. https://www.facebook.com/107509875938399
+  """
+  url: String!
+}
+
+"""Annotation representing all the entities in the text"""
+input AnnotationInputLinkedIn {
+  """The id of the annotation, e.g. 1521226"""
+  id: String!
+
+  """The entity of the annotation, e.g. urn:li:organization:1521226"""
+  entity: String!
+
+  """The length of the annotation, e.g. 6"""
+  length: Int!
+
+  """
+  The link of the annotation, e.g. https://www.linkedin.com/company/bufferapp
+  """
+  link: String!
+
+  """The localized name of the annotation, e.g. Buffer"""
+  localizedName: String!
+
+  """The start of the annotation, e.g. 5"""
+  start: Int!
+
+  """The vanity name of the annotation, e.g. bufferapp"""
+  vanityName: String!
+}
+
+"""
+A post authored by the user which is posted to a thread.
+This is commonly used for long-format twitter and meta threads posts to
+allow authored content to span multiple threads.
+Threads are represented as a list of replies, each replying to the previous one.
+The first item in the list is the root post of the thread and should match the
+top-level `text` on the post input; the remaining items are replies.
+"""
+input ThreadedPostInput {
+  """Ordered list of assets on this threaded post"""
+  assets: [AssetInput!]! = []
+
+  """Service-specific fields for this threaded post"""
+  metadata: ThreadItemMetadataInput
+
+  """The text body content of the threaded post"""
+  text: String
+}
+
+"""Bluesky fields on a single item of a thread"""
+input ThreadItemBlueskyMetadataInput {
+  """
+  Link attachment. Mutually exclusive with a non-empty `assets` array — input providing both is rejected.
+  """
+  linkAttachment: LinkAttachmentInput
+}
+
+"""Threads fields on a single item of a thread"""
+input ThreadItemThreadsMetadataInput {
+  """
+  Link attachment. Mutually exclusive with a non-empty `assets` array — input providing both is rejected.
+  """
+  linkAttachment: LinkAttachmentInput
+}
+
+"""
+Service-specific fields on a single item of a thread. The key must match the
+channel's service; input under any other key is rejected.
+"""
+input ThreadItemMetadataInput {
+  """Bluesky fields for this thread item"""
+  bluesky: ThreadItemBlueskyMetadataInput
+
+  """Threads fields for this thread item"""
+  threads: ThreadItemThreadsMetadataInput
+}
+
+"""Instagram Geolocation"""
+input InstagramGeolocationInput {
+  """The id of this location"""
+  id: String
+
+  """The name of this location"""
+  text: String
+}
+
+"""
+Instagram fields for reminder-based publishing. Upon the reminder for publishing, the user
+is prompted to copy and paste these fields into the Instagram app to complete the post.
+"""
+input InstagramStickerFieldsInput {
+  """Placeholder text for the post's music"""
+  music: String
+
+  """Additional field for any other post content"""
+  other: String
+
+  """Placeholder text for the post's linked products"""
+  products: String
+
+  """Text for the Story or Reel"""
+  text: String
+
+  """Placeholder text for the post's topics (Reels only)"""
+  topics: String
+}
+
+"""Metadata for a GBP post of type Whats new"""
+input GoogleBusinessWhatsNewMetaDataInput {
+  """
+  Action button. Optional: a post with no button, or `none`, publishes without a call-to-action. On edit, omitting it preserves the existing value.
+  """
+  button: GoogleBusinessPostActionType
+
+  """Link to the action"""
+  link: String
+}
+
+"""Metadata for a GBP post that is an offer"""
+input GoogleBusinessOfferMetaDataInput {
+  """Coupon code for the offer"""
+  code: String
+
+  """
+  End date of the offer. Required on create; optional on edit (omitted preserves existing value).
+  """
+  endDate: DateTime
+
+  """Link to the offer"""
+  link: String
+
+  """
+  Start date of the offer. Required on create; optional on edit (omitted preserves existing value).
+  """
+  startDate: DateTime
+
+  """Terms and Conditions"""
+  terms: String
+
+  """
+  Title of the offer. Required on create; optional on edit (omitted preserves existing value).
+  """
+  title: String
+}
+
+"""Metadata for a GBP post that is an event"""
+input GoogleBusinessEventMetaDataInput {
+  """
+  Action button. Optional: a post with no button, or `none`, publishes without a call-to-action. On edit, omitting it preserves the existing value.
+  """
+  button: GoogleBusinessPostActionType
+
+  """
+  End date of the event. Required on create; optional on edit (omitted preserves existing value).
+  """
+  endDate: DateTime
+
+  """Indicate whether the event has a start or end time."""
+  isFullDayEvent: Boolean!
+
+  """Link to the action"""
+  link: String
+
+  """
+  Start date of the event. Required on create; optional on edit (omitted preserves existing value).
+  """
+  startDate: DateTime
+
+  """
+  Title of the event. Required on create; optional on edit (omitted preserves existing value).
+  """
+  title: String
+}
+
+"""Instagram post metadata"""
+input InstagramPostMetadataInput {
+  """Instagram post's first comment"""
+  firstComment: String
+
+  """Geolocation of the post"""
+  geolocation: InstagramGeolocationInput
+
+  """Whether the post discloses AI-generated content"""
+  isAiGenerated: Boolean
+
+  """Shop Grid link for the post"""
+  link: String
+
+  """Indicates whether post should be shared to feed"""
+  shouldShareToFeed: Boolean!
+
+  """Sticker fields for reminder-based publishing"""
+  stickerFields: InstagramStickerFieldsInput
+
+  """
+  The channel-specific type of the post, eg, post, story, reel for Instagram
+  """
+  type: PostType!
+}
+
+"""Facebook post metadata"""
+input FacebookPostMetadataInput {
+  """Annotations representing entities in the text"""
+  annotations: [AnnotationInputFacebook!]
+
+  """Facebook post's first comment"""
+  firstComment: String
+
+  """
+  Link attachment. Mutually exclusive with a non-empty `assets` array — input providing both is rejected.
+  """
+  linkAttachment: LinkAttachmentInput
+
+  """
+  The channel-specific type of the post, eg, post, story, reel for Facebook
+  """
+  type: PostTypeFacebook!
+}
+
+"""LinkedIn post metadata"""
+input LinkedInPostMetadataInput {
+  """Annotations representing entities in the text"""
+  annotations: [AnnotationInputLinkedIn!]
+
+  """LinkedIn post's first comment"""
+  firstComment: String
+
+  """
+  Link attachment. Mutually exclusive with a non-empty `assets` array — input providing both is rejected.
+  """
+  linkAttachment: LinkAttachmentInput
+}
+
+"""Link attachment"""
+input LinkAttachmentInput {
+  """Description shown on the link card"""
+  description: String
+
+  """Thumbnail shown on the link card"""
+  thumbnail: LinkAttachmentThumbnailInput
+
+  """Title shown on the link card"""
+  title: String
+
+  """URL that the link asset has been built from"""
+  url: String!
+}
+
+"""Thumbnail of a link attachment"""
+input LinkAttachmentThumbnailInput {
+  """URL of the thumbnail image"""
+  url: String!
+}
+
+"""Information about the initial Tweet that was retweeted"""
+input RetweetMetadataInput {
+  """Retweet ID"""
+  id: String!
+
+  """Optional user comment shown above the embedded retweet"""
+  comment: String
+}
+
+"""Twitter post metadata"""
+input TwitterPostMetadataInput {
+  """
+  Whether the post discloses AI-generated content (original tweets only, never retweets)
+  """
+  isAiGenerated: Boolean
+
+  """The details of the tweet being retweeted"""
+  retweet: RetweetMetadataInput
+
+  """
+  The ordered list of posts that make up the thread (not paginated). This
+  array is the source of truth for what gets published: every post in the
+  thread, including the root post, must be provided here. Posts are
+  published in order, each replying to the previous one. The first item is
+  the root post and should match the top-level `text` on the post input.
+  """
+  thread: [ThreadedPostInput!]
+}
+
+"""Pinterest post metadata"""
+input PinterestPostMetadataInput {
+  """
+  The board ID of the Pin, can be obtained when fetching the channel details with the following query:
+  ```
+  query GetChannelWithSubprofiles {
+    channel(input: { id: "[CHANNEL_ID_HERE]" }) {
+      metadata {
+        ... on PinterestMetadata {
+          boards {
+            serviceId
+          }
+        }
+      }
+    }
+  }
+  ```
+  Required on create; optional on edit (omitted preserves existing board).
+  """
+  boardServiceId: String
+
+  """The title of the Pin"""
+  title: String
+
+  """The Pin destination link"""
+  url: String
+}
+
+"""
+Google Business Profile post metadata
+@deprecated: pending proposal for specific GBP post types: update, offer and event metadata types
+"""
+input GoogleBusinessPostMetadataInput {
+  """Details of the Event metadata"""
+  detailsEvent: GoogleBusinessEventMetaDataInput
+
+  """Details of the Offer metadata"""
+  detailsOffer: GoogleBusinessOfferMetaDataInput
+
+  """Details of the Whats new metadata"""
+  detailsWhatsNew: GoogleBusinessWhatsNewMetaDataInput
+
+  """Title if available in the given GBP post type: event and offer"""
+  title: String
+
+  """
+  The channel-specific type of the post, eg, post, offer, event for Google Business Profile
+  """
+  type: PostTypeGoogleBusiness!
+}
+
+"""Youtube post metadata"""
+input YoutubePostMetadataInput {
+  """
+  Youtube Category ID, one ID of this list:
+  ID: 1 -> Film & Animation
+  ID: 2 -> Autos & Vehicles
+  ID: 10 -> Music
+  ID: 15 -> Pets & Animals
+  ID: 17 -> Sports
+  ID: 19 -> Travel & Events
+  ID: 20 -> Gaming
+  ID: 22 -> People & Blogs
+  ID: 23 -> Comedy
+  ID: 24 -> Entertainment
+  ID: 25 -> News & Politics
+  ID: 26 -> Howto & Style
+  ID: 27 -> Education
+  ID: 28 -> Science & Technology
+  ID: 29 -> Nonprofits & Activism
+  
+  Required on create; optional on edit (omitted preserves existing value).
+  """
+  categoryId: String
+
+  """Indicates whether the video allows embedding (default: true)"""
+  embeddable: Boolean
+
+  """Whether the post discloses AI-generated content"""
+  isAiGenerated: Boolean
+
+  """Video license (default: youtube)"""
+  license: YoutubeLicense
+
+  """Indicates whether the video is suitable for kids (default: false)"""
+  madeForKids: Boolean
+
+  """
+  Indicates whether to notify subscribers on publish video (default: true)
+  """
+  notifySubscribers: Boolean
+
+  """Privacy setting for post (default: public)"""
+  privacy: YoutubePrivacy
+
+  """
+  Title of the Youtube post. Required on create; optional on edit (omitted preserves existing value).
+  """
+  title: String
+}
+
+"""Mastodon post metadata"""
+input MastodonPostMetadataInput {
+  """Spoiler text hiding the root text of this post"""
+  spoilerText: String
+
+  """
+  The ordered list of posts that make up the thread (not paginated). This
+  array is the source of truth for what gets published: every post in the
+  thread, including the root post, must be provided here. Posts are
+  published in order, each replying to the previous one. The first item is
+  the root post and should match the top-level `text` on the post input.
+  """
+  thread: [ThreadedPostInput!]
+}
+
+"""Threads post metadata"""
+input ThreadsPostMetadataInput {
+  """
+  Link attachment. Mutually exclusive with a non-empty `assets` array — input providing both is rejected.
+  """
+  linkAttachment: LinkAttachmentInput
+
+  """LocationId associated with the post"""
+  locationId: String
+
+  """Location name associated with the post"""
+  locationName: String
+
+  """
+  The ordered list of posts that make up the thread (not paginated). This
+  array is the source of truth for what gets published: every post in the
+  thread, including the root post, must be provided here. Posts are
+  published in order, each replying to the previous one. The first item is
+  the root post and should match the top-level `text` on the post input.
+  """
+  thread: [ThreadedPostInput!]
+
+  """Topic associated with the post"""
+  topic: String
+
+  """The type of the post"""
+  type: PostType
+}
+
+"""Bluesky post metadata"""
+input BlueskyPostMetadataInput {
+  """
+  Link attachment. Mutually exclusive with a non-empty `assets` array — input providing both is rejected.
+  """
+  linkAttachment: LinkAttachmentInput
+
+  """
+  The ordered list of posts that make up the thread (not paginated). This
+  array is the source of truth for what gets published: every post in the
+  thread, including the root post, must be provided here. Posts are
+  published in order, each replying to the previous one. The first item is
+  the root post and should match the top-level `text` on the post input.
+  """
+  thread: [ThreadedPostInput!]
+}
+
+"""Substack post metadata"""
+input SubstackPostMetadataInput {
+  """
+  Link attachment. Mutually exclusive with a non-empty `assets` array — input providing both is rejected.
+  """
+  linkAttachment: LinkAttachmentInput
+}
+
+"""TikTok post metadata"""
+input TikTokPostMetadataInput {
+  """Whether the post discloses AI-generated content (TikTok video only)"""
+  isAiGenerated: Boolean
+
+  """The title of the TikTok post (for photo posts)"""
+  title: String
+}
+
+"""Metadata of the post which differs based on the social network/service"""
+input PostInputMetaData {
+  """Metadata for Bluesky post"""
+  bluesky: BlueskyPostMetadataInput
+
+  """Metadata for Facebook post"""
+  facebook: FacebookPostMetadataInput
+
+  """Metadata for Google Business Profile post"""
+  google: GoogleBusinessPostMetadataInput
+
+  """Metadata for Instagram post"""
+  instagram: InstagramPostMetadataInput
+
+  """Metadata for LinkedIn post"""
+  linkedin: LinkedInPostMetadataInput
+
+  """Metadata for Mastodon post"""
+  mastodon: MastodonPostMetadataInput
+
+  """Metadata for Pinterest post"""
+  pinterest: PinterestPostMetadataInput
+
+  """Metadata for Substack post"""
+  substack: SubstackPostMetadataInput
+
+  """Metadata for Threads post"""
+  threads: ThreadsPostMetadataInput
+
+  """Metadata for TikTok post"""
+  tiktok: TikTokPostMetadataInput
+
+  """Metadata for Twitter post"""
+  twitter: TwitterPostMetadataInput
+
+  """Metadata for Youtube post"""
+  youtube: YoutubePostMetadataInput
+}
+
+"""Filter to apply to the posts query"""
+input PostsFiltersInput {
+  """When set, it will filter posts by channel"""
+  channelIds: [ChannelId!]
+
+  """When set, it will filter posts by their scheduled posting date"""
+  dueAt: DateTimeComparator
+
+  """
+  When set, it will filter posts by whether their scheduled posting date exists.
+  `absent` cannot be combined with `dueAt`, because absent dates cannot also match a date range.
+  """
+  dueAtPresence: DateTimePresence
+
+  """
+  When set, it will filter posts by format.
+  
+  `post` is a fallback bucket rather than one stored format: it matches every
+  post the other formats do not claim, which is what `Post.metadata.type`
+  reports for the same post. `carousel` and `thread` are rejected, because no
+  stored value resolves to them.
+  """
+  postTypes: [PostType!]
+
+  """When set, it will filter posts by status"""
+  status: [PostStatus!]
+
+  """
+  Filter posts by tags. Supports specific tags, untagged posts, or union of both.
+  """
+  tags: TagComparator
+
+  """When set, it will filter posts by the date they were created"""
+  createdAt: DateTimeComparator
+}
+
+"""Key of collection to use for sorting"""
+enum PostSortableKey {
+  """
+  Sort by the post's dueAt field.
+  Due at is the date when the post is scheduled to be published.
+  """
+  dueAt
+
+  """
+  Sort by the post's createdAt field.
+  Created at is the date when the post was created.
+  """
+  createdAt
+}
+
+"""
+Sort order of post results. List multiple to create tie-breaking order.
+"""
+input PostSortInput {
+  """The direction to sort by."""
+  direction: SortDirection!
+
+  """The field to sort by."""
+  field: PostSortableKey!
+}
+
+"""Input for the posts query"""
+input PostsInput {
+  """The filters to apply to the posts query"""
+  filter: PostsFiltersInput
+
+  """The Organization id to fetch posts for"""
+  organizationId: OrganizationId!
+
+  """The sort to apply to the posts results"""
+  sort: [PostSortInput!]
+}
+
+"""
+Represent a node in the pagination result using the Connect Relay convention.
+"""
+type PostsEdge {
+  """Opaque cursor to be used in pagination to fetch from current node."""
+  cursor: String!
+
+  """Represents the current post in the list."""
+  node: Post!
+}
+
+"""Results for the posts query."""
+type PostsResults {
+  """The list of posts that match the query."""
+  edges: [PostsEdge!]
+
+  """Information to aid in pagination."""
+  pageInfo: PaginationPageInfo!
+}
+
+"""Input for the post query"""
+input PostInput {
+  """The ID of the post to be retrieved"""
+  id: PostId!
+}
+
+"""
+Actions the calling actor can take on a `ContentItem`. The server computes
+this set from the same rules the content item mutations enforce. A client
+reads it to drive UI affordances instead of deriving the rules itself.
+
+The set carries an action only when a client can offer it on this one item.
+An action whose answer is the same for every item in a response drives no
+affordance, so it stays out. Read access is one of those: the API returns
+only a content item the actor may read.
+"""
+enum ContentItemAction {
+  """
+  The actor can delete this content item. An item that holds channel-specific
+  posts gets a second check. The mutation checks each post, so a delete can
+  still fail.
+  """
+  deleteContentItem
+
+  """
+  The actor can change this content item's title and target date. The actor
+  can also change the tags and the draft text while the item holds a
+  channel-less draft.
+  """
+  updateContentItem
+}
+
+"""
+A piece of content in Buffer. It starts as a channel-less draft and can later
+become a set of channel-specific posts, or it can be created with its posts
+directly.
+
+This API is an early preview and can change without a deprecation period.
+"""
+type ContentItem {
+  """Unique identifier for this content item."""
+  id: ContentItemId!
+
+  """Account that owns this content item."""
+  accountId: AccountId!
+
+  """
+  Actions the calling actor can take on this content item. A client reads this
+  set instead of deriving the authorization rules itself.
+  """
+  allowedActions: [ContentItemAction!]!
+
+  """
+  The person who created this content item. Null when that person's account
+  no longer exists.
+  """
+  author: Author
+
+  """
+  The current content of this item: either a channel-less draft or the
+  channel-specific posts created from it.
+  """
+  body: ContentItemBody!
+
+  """Organization that owns this content item."""
+  organizationId: OrganizationId!
+
+  """
+  Tags applied to this content item, in the order they were set. A tag
+  applies to the item as a whole, so it survives the move from a
+  channel-less draft to channel-specific posts.
+  """
+  tags: [Tag!]!
+
+  """
+  Optional date indicating when this piece of content should go out.
+  This is a planning aid only and does not schedule any posts.
+  """
+  targetDate: DateTime
+
+  """Optional title describing what this piece of content is about."""
+  title: String
+
+  """When this content item was created."""
+  createdAt: DateTime!
+}
+
+"""
+A content draft that is not attached to any channel yet. Because no channel
+is selected, no network-specific rules apply, including media type
+restrictions.
+"""
+type DraftContent {
+  """Unique identifier for this draft."""
+  id: DraftContentId!
+
+  """True when the draft content was written with the help of AI."""
+  aiAssisted: Boolean!
+
+  """Images, videos, or documents attached to the draft, in display order."""
+  assets: [Asset!]!
+
+  """
+  The written content of the draft. Empty when the draft holds only assets.
+  """
+  text: String!
+}
+
+"""
+The fixed set of channel-specific posts created from a content item. Each
+post targets a single channel and follows that channel's network rules.
+"""
+type PostContent {
+  """
+  The posts created for this content item, one per channel. Individual posts
+  are edited through their own mutations. In a `contents` page,
+  `ContentEdge.leadPost` names the post that matched the filters.
+  """
+  posts: [Post!]!
+}
+
+"""
+A content item's content: its channel-less draft while it is a draft, or its
+channel-specific posts once it holds posts. The body shows one or the other,
+never both, although a content item keeps its draft after it becomes posts.
+"""
+union ContentItemBody = DraftContent | PostContent
+
+"""Input for addPostToContentItem."""
+input AddPostToContentItemInput {
+  """The content item to add the post to."""
+  id: ContentItemId!
+
+  """
+  The post to add. The post must already exist. The post and the content item
+  must belong to the same organization.
+  """
+  postId: PostId!
+}
+
+"""Successful addPostToContentItem response."""
+type AddPostToContentItemSuccess {
+  """The content item after the mutation added the post."""
+  contentItem: ContentItem!
+
+  """
+  The post after the mutation added it. Its contentItemId names this content
+  item.
+  """
+  post: Post!
+}
+
+"""All possible responses for addPostToContentItem."""
+union AddPostToContentItemPayload = AddPostToContentItemSuccess | VoidMutationError
+
+"""Input for removePostFromContentItem."""
+input RemovePostFromContentItemInput {
+  """The content item to remove the post from."""
+  id: ContentItemId!
+
+  """The post to remove from a content item."""
+  postId: PostId!
+}
+
+"""Successful removePostFromContentItem response."""
+type RemovePostFromContentItemSuccess {
+  """The content item after the post left it."""
+  contentItem: ContentItem!
+
+  """The post after the mutation removed it. It belongs to no content item."""
+  post: Post!
+}
+
+"""All possible responses for removePostFromContentItem."""
+union RemovePostFromContentItemPayload = RemovePostFromContentItemSuccess | VoidMutationError
+
+"""Input for createContentItem."""
+input CreateContentItemInput {
+  """
+  Organization that owns the content item and all variants created in it.
+  """
+  organizationId: OrganizationId!
+
+  """
+  The channel-specific post variants to create, one per channel. Provide at
+  least one variant, and at most one variant per channel.
+  """
+  posts: [CreatePostInput!]!
+
+  """Tags to apply to this content item. Omit to create it with no tags."""
+  tagIds: [TagId!]
+
+  """
+  Optional date indicating when this piece of content should go out. This is
+  a planning aid only and does not schedule any posts.
+  """
+  targetDate: DateTime
+
+  """Optional title describing what this piece of content is about."""
+  title: String
+}
+
+"""Successful createContentItem response."""
+type CreateContentItemSuccess {
+  """The content item created by this mutation."""
+  content: ContentItem!
+}
+
+"""
+Invalid input for a single post variant in the createContentItem input list.
+"""
+type CreateContentItemVariantInvalidInputError implements MutationError {
+  """Channel targeted by the failing variant."""
+  channelId: ChannelId!
+
+  """Error message."""
+  message: String!
+}
+
+"""
+Limit reached for a single post variant in the createContentItem input list.
+"""
+type CreateContentItemVariantLimitReachedError implements MutationError {
+  """Channel targeted by the failing variant."""
+  channelId: ChannelId!
+
+  """Error message."""
+  message: String!
+}
+
+"""
+The channel targeted by a single post variant in the createContentItem input
+list was not found or is not accessible.
+"""
+type CreateContentItemVariantNotFoundError implements MutationError {
+  """Channel targeted by the failing variant."""
+  channelId: ChannelId!
+
+  """Error message."""
+  message: String!
+}
+
+"""
+A recoverable error that prevented a content item from being created. Variant
+errors identify the specific channel they apply to; the others apply to the
+request as a whole.
+"""
+union CreateContentItemError = InvalidInputError | NotFoundError | LimitReachedError | CreateContentItemVariantInvalidInputError | CreateContentItemVariantLimitReachedError | CreateContentItemVariantNotFoundError
+
+"""
+createContentItem failure. Every recoverable error is reported together so the
+caller can surface them all at once. When the input fails validation, no
+content item and no variants are created. When one or more variants fail while
+being processed after creation, the content item and all of its variants
+already exist; the per-channel errors identify the variants that need
+attention.
+"""
+type CreateContentItemFailure implements MutationError {
+  """The recoverable errors behind this failure."""
+  errors: [CreateContentItemError!]!
+
+  """Summary error message."""
+  message: String!
+}
+
+"""All possible responses for createContentItem."""
+union CreateContentItemPayload = CreateContentItemSuccess | CreateContentItemFailure
+
+"""A channel-less draft to save on a content item."""
+input DraftContentInput {
+  """Set to true when the draft content was written with the help of AI."""
+  aiAssisted: Boolean! = false
+
+  """Images, videos, or documents to attach to the draft, in display order."""
+  assets: [AssetInput!]! = []
+
+  """
+  The written content of the draft. Can be empty when the draft holds at
+  least one asset.
+  """
+  text: String!
+}
+
+"""Input for createContentItemDraft."""
+input CreateContentItemDraftInput {
+  """
+  Client-generated UUID that makes draft creation idempotent. A retry with the
+  same UUID in the same organization returns the first content item in its
+  current state.
+  """
+  correlationId: Uuid
+
+  """The channel-less draft content to start with."""
+  draft: DraftContentInput!
+
+  """Organization that will own the content item."""
+  organizationId: OrganizationId!
+
+  """Tags to apply to this content item. Omit to create it with no tags."""
+  tagIds: [TagId!]
+
+  """
+  Optional date indicating when this piece of content should go out. This is
+  a planning aid only and does not schedule any posts.
+  """
+  targetDate: DateTime
+
+  """Optional title describing what this piece of content is about."""
+  title: String
+}
+
+"""Successful createContentItemDraft response."""
+type CreateContentItemDraftSuccess {
+  """
+  The content item first created for this request, including its current state.
+  """
+  contentItem: ContentItem!
+}
+
+"""
+createContentItemDraft failure. When any part of the input is invalid,
+nothing is created.
+"""
+type CreateContentItemDraftFailure implements MutationError {
+  """The recoverable errors behind this failure."""
+  errors: [InvalidInputError!]!
+
+  """Summary error message."""
+  message: String!
+}
+
+"""All possible responses for createContentItemDraft."""
+union CreateContentItemDraftPayload = CreateContentItemDraftSuccess | CreateContentItemDraftFailure
+
+"""
+Input for updateContentItem. Only the fields provided are changed. Omitted
+fields keep their current value.
+"""
+input UpdateContentItemInput {
+  """The content item to update."""
+  id: ContentItemId!
+
+  """Omit to preserve the existing target date. Null clears it."""
+  targetDate: DateTime
+
+  """Omit to preserve the existing title. Null clears it."""
+  title: String
+}
+
+"""Successful updateContentItem response."""
+type UpdateContentItemSuccess {
+  """The content item after the update."""
+  contentItem: ContentItem!
+}
+
+"""
+updateContentItem failure. When any part of the input is invalid, nothing is
+changed.
+"""
+type UpdateContentItemFailure implements MutationError {
+  """The recoverable errors behind this failure."""
+  errors: [InvalidInputError!]!
+
+  """Summary error message."""
+  message: String!
+}
+
+"""All possible responses for updateContentItem."""
+union UpdateContentItemPayload = UpdateContentItemSuccess | UpdateContentItemFailure
+
+"""Input for updateContentItemDraft."""
+input UpdateContentItemDraftInput {
+  """The content item whose channel-less draft is replaced."""
+  id: ContentItemId!
+
+  """The new draft content. Replaces the current draft in full."""
+  draft: DraftContentInput!
+
+  """
+  Tags to apply to this content item. Omit to keep the current tags. An
+  empty list or null removes them all.
+  """
+  tagIds: [TagId!]
+
+  """
+  Date indicating when this piece of content should go out. This is a
+  planning aid only and does not schedule any posts. Omit to preserve the
+  existing target date. Null clears it.
+  """
+  targetDate: DateTime
+}
+
+"""Successful updateContentItemDraft response."""
+type UpdateContentItemDraftSuccess {
+  """The updated content item."""
+  contentItem: ContentItem!
+}
+
+"""
+updateContentItemDraft and promoteContentItemDraftToPosts need a
+channel-less draft. They report this error when the item already holds
+channel-specific posts. Another request can put the item in that state while
+this one runs.
+"""
+type ContentItemStateError implements MutationError {
+  """Error message."""
+  message: String!
+}
+
+"""
+A recoverable error that prevented a content item draft from being updated.
+"""
+union UpdateContentItemDraftError = InvalidInputError | ContentItemStateError
+
+"""updateContentItemDraft failure."""
+type UpdateContentItemDraftFailure implements MutationError {
+  """The recoverable errors behind this failure."""
+  errors: [UpdateContentItemDraftError!]!
+
+  """Summary error message."""
+  message: String!
+}
+
+"""All possible responses for updateContentItemDraft."""
+union UpdateContentItemDraftPayload = UpdateContentItemDraftSuccess | UpdateContentItemDraftFailure
+
+"""Input for promoteContentItemDraftToPosts."""
+input PromoteContentItemDraftToPostsInput {
+  """The content item to promote."""
+  id: ContentItemId!
+
+  """
+  The channel-specific posts to create, one per channel. Provide at least
+  one post, and at most one post per channel.
+  """
+  posts: [CreatePostInput!]!
+
+  """
+  Tags to apply to this content item. Omit to keep the current tags. An
+  empty list or null removes them all.
+  """
+  tagIds: [TagId!]
+}
+
+"""Successful promoteContentItemDraftToPosts response."""
+type PromoteContentItemDraftToPostsSuccess {
+  """The promoted content item."""
+  contentItem: ContentItem!
+}
+
+"""
+The channel targeted by a single post in the promoteContentItemDraftToPosts
+input list was not found or is not accessible.
+"""
+type PostChannelNotFoundError implements MutationError {
+  """Channel targeted by the failing post."""
+  channelId: ChannelId!
+
+  """Error message."""
+  message: String!
+}
+
+"""
+Invalid input for a single post in the promoteContentItemDraftToPosts input
+list.
+"""
+type PostInvalidInputError implements MutationError {
+  """Channel targeted by the failing post."""
+  channelId: ChannelId!
+
+  """Error message."""
+  message: String!
+}
+
+"""
+Limit reached for a single post in the promoteContentItemDraftToPosts input
+list.
+"""
+type PostLimitReachedError implements MutationError {
+  """Channel targeted by the failing post."""
+  channelId: ChannelId!
+
+  """Error message."""
+  message: String!
+}
+
+"""
+A recoverable error that prevented a content item draft from being
+promoted. Post errors identify the specific channel they apply to; the
+others apply to the request as a whole.
+"""
+union PromoteContentItemDraftToPostsError = ContentItemStateError | InvalidInputError | PostChannelNotFoundError | PostInvalidInputError | PostLimitReachedError
+
+"""
+promoteContentItemDraftToPosts failure. Every recoverable error is reported
+together so the caller can surface them all at once — for example, every
+post that failed validation across every targeted channel. A failure does
+not always mean nothing changed: post-processing errors are reported after
+the promotion has taken effect.
+"""
+type PromoteContentItemDraftToPostsFailure implements MutationError {
+  """The recoverable errors behind this failure."""
+  errors: [PromoteContentItemDraftToPostsError!]!
+
+  """Summary error message."""
+  message: String!
+}
+
+"""All possible responses for promoteContentItemDraftToPosts."""
+union PromoteContentItemDraftToPostsPayload = PromoteContentItemDraftToPostsSuccess | PromoteContentItemDraftToPostsFailure
+
+"""Input for deleteContentItem."""
+input DeleteContentItemInput {
+  """The content item to delete."""
+  id: ContentItemId!
+}
+
+"""
+A post in this content item cannot be deleted, so the item cannot be
+deleted either. Either the post is publishing or has already published,
+and posts in those states can no longer be deleted, or this account is
+not allowed to delete posts on that channel.
+"""
+type PostNotDeletableError implements MutationError {
+  """Channel targeted by the post that cannot be deleted."""
+  channelId: ChannelId!
+
+  """Error message."""
+  message: String!
+}
+
+"""
+deleteContentItem failure. When any post cannot be deleted, nothing is
+deleted: the content item and all of its posts remain unchanged. Every
+blocked post is reported together so the caller can surface them all at
+once.
+"""
+type DeleteContentItemFailure implements MutationError {
+  """The recoverable errors behind this failure."""
+  errors: [PostNotDeletableError!]!
+
+  """Summary error message."""
+  message: String!
+}
+
+"""All possible responses for deleteContentItem."""
+union DeleteContentItemPayload = EmptySuccess | DeleteContentItemFailure
+
+"""Input for fetching a single content item by id."""
+input ContentItemInput {
+  """The unique identifier of the content item to fetch."""
+  id: ContentItemId!
+}
+
+"""The status of a content item's body."""
+enum ContentItemStatus {
+  """The content item holds a channel-less draft."""
+  draftContent
+
+  """The content item holds channel-specific posts."""
+  postContent
+}
+
+"""Field to sort content items by."""
+enum ContentItemSortableKey {
+  """
+  Sort by the content item's target date, the date it is planned for. Content
+  items with no target date sort first in ascending order.
+  """
+  targetDate
+
+  """Sort by the date the content item was created."""
+  createdAt
+}
+
+"""
+One sorting criterion for the content items query. List several to break ties.
+"""
+input ContentItemsSortInput {
+  """The direction to sort by."""
+  direction: SortDirection!
+
+  """The field to sort by."""
+  field: ContentItemSortableKey!
+}
+
+"""
+Filter for a content item's target date. Provide exactly one field
+(enforced by @oneOf).
+"""
+input ContentItemsTargetDateFilter {
+  """
+  Only return content items by whether a target date is set: `present`
+  returns only dated items, `absent` only undated ones.
+  """
+  presence: DateTimePresence
+
+  """
+  Only return content items whose target date falls within this range.
+  A range with no bounds returns every content item that has a target date.
+  """
+  range: DateTimeComparator
+}
+
+"""Filters for listing content items. Omitted fields do not filter."""
+input ContentItemsFilter {
+  """
+  Only return content items with this content status. When omitted, content
+  items in every status are returned.
+  """
+  contentStatus: ContentItemStatus
+
+  """
+  Only return content items carrying one of these tags, or, with `isEmpty`,
+  content items with no tags at all. Matches the tags applied to the content
+  item itself, not tags applied later to an individual post.
+  """
+  tags: TagComparator
+
+  """Only return content items matching this target date filter."""
+  targetDate: ContentItemsTargetDateFilter
+}
+
+"""Input for listing an organization's content items."""
+input ContentItemsInput {
+  """
+  Filters to apply. When omitted, all of the organization's content items
+  are returned.
+  """
+  filter: ContentItemsFilter
+
+  """
+  Organization to list content items for. The caller must be a member of
+  this organization.
+  """
+  organizationId: OrganizationId!
+
+  """
+  Sorting to apply, each entry breaking ties in the one before it. Defaults to
+  newest first. A pagination cursor is only valid for the sort that produced
+  it, so reset `after` to null whenever the sort changes.
+  """
+  sort: [ContentItemsSortInput!]
+}
+
+"""An edge in a content item connection."""
+type ContentItemEdge {
+  """A cursor for pagination."""
+  cursor: String!
+
+  """The content item node at the end of the edge."""
+  node: ContentItem!
+}
+
+"""A paginated connection of content items."""
+type ContentItemsConnection {
+  """The list of content item edges."""
+  edges: [ContentItemEdge!]!
+
+  """Pagination information for the connection."""
+  pageInfo: PaginationPageInfo!
+
+  """The total number of content items matching the request."""
+  totalCount: Int!
+}
+
+"""The name and color to give a new tag."""
+input TagToCreateInput {
+  """
+  The tag's color as a hex triplet: `#` followed by exactly six hex digits, for
+  example `#F523F1`. Shorthand such as `#F51` is rejected. Buffer maps
+  recognized palette colors onto `Tag.colorName`.
+  """
+  color: String!
+
+  """
+  The tag's display name, for example `Summer sales`. Between 1 and 100
+  characters, and unique within the organization. Names are compared exactly,
+  so `Summer sales` and `summer sales` can coexist.
+  """
+  name: String!
+}
+
+"""Input for creating a tag."""
+input CreateTagInput {
+  """
+  Organization to create the tag in. The caller must be an administrator of
+  this organization.
+  """
+  organizationId: OrganizationId!
+
+  """The name and color to give the new tag."""
+  tag: TagToCreateInput!
+}
+
+"""
+The name and color to set on an existing tag. Both are replaced, so send the
+current value for the one you are not changing.
+"""
+input TagToUpdateInput {
+  """
+  The tag's color as a hex triplet: `#` followed by exactly six hex digits, for
+  example `#F523F1`. Shorthand such as `#F51` is rejected. Buffer maps
+  recognized palette colors onto `Tag.colorName`.
+  """
+  color: String!
+
+  """
+  The tag's display name, for example `Summer sales`. Between 1 and 100
+  characters, and unique within the organization. Names are compared exactly,
+  so `Summer sales` and `summer sales` can coexist.
+  """
+  name: String!
+}
+
+"""Input for updating a tag."""
+input UpdateTagInput {
+  """
+  The tag to update. Its organization is taken from the tag itself, and the
+  caller must be an administrator of that organization.
+  """
+  id: TagId!
+
+  """The name and color to set on the tag."""
+  tag: TagToUpdateInput!
+}
+
+"""Input for deleting a tag."""
+input DeleteTagInput {
+  """
+  The tag to delete. Its organization is taken from the tag itself, and the
+  caller must be an administrator of that organization.
+  """
+  id: TagId!
+}
+
+"""Returned when a tag was created or updated successfully."""
+type TagActionSuccess {
+  """The tag as persisted, read back after the write."""
+  tag: Tag!
+}
+
+"""Returned when a tag was deleted successfully."""
+type DeleteTagActionSuccess {
+  """The id of the tag that was deleted."""
+  id: TagId!
+}
+
+"""
+The result of `createTag`: the tag that was created, or the reason it was
+refused.
+
+**Members on the way out.** `RestProxyError`, `NotFoundError`,
+`UnauthorizedError` and `UnexpectedError` are being removed from this union. No
+new operation should select them by name.
+
+`RestProxyError` is never returned. The other three describe situations a caller
+cannot correct — the tag not existing, the caller not being permitted, an
+unexpected fault — and will be reported in the response's top-level `errors`
+array instead of here.
+
+Select `... on MutationError { message }` rather than naming concrete error
+types. Every error member implements that interface, so the selection keeps
+working across the change.
+"""
+union CreateTagPayload = TagActionSuccess | InvalidInputError | DuplicateError | LimitReachedError | NotFoundError | UnauthorizedError | UnexpectedError | RestProxyError
+
+"""
+The result of `updateTag`: the tag as it now stands, or the reason the edit was
+refused.
+
+**Members on the way out.** `RestProxyError`, `NotFoundError`,
+`UnauthorizedError` and `UnexpectedError` are being removed from this union. No
+new operation should select them by name.
+
+`RestProxyError` is never returned. The other three describe situations a caller
+cannot correct — the tag not existing, the caller not being permitted, an
+unexpected fault — and will be reported in the response's top-level `errors`
+array instead of here.
+
+Select `... on MutationError { message }` rather than naming concrete error
+types. Every error member implements that interface, so the selection keeps
+working across the change.
+"""
+union UpdateTagPayload = TagActionSuccess | InvalidInputError | DuplicateError | NotFoundError | UnauthorizedError | UnexpectedError | RestProxyError
+
+"""
+The result of `deleteTag`: the id of the deleted tag, or the reason the delete
+was refused.
+
+**Members on the way out.** `RestProxyError`, `NotFoundError`,
+`UnauthorizedError` and `UnexpectedError` are being removed from this union. No
+new operation should select them by name.
+
+`RestProxyError` is never returned. The other three describe situations a caller
+cannot correct — the tag not existing, the caller not being permitted, an
+unexpected fault — and will be reported in the response's top-level `errors`
+array instead of here.
+
+Select `... on MutationError { message }` rather than naming concrete error
+types. Every error member implements that interface, so the selection keeps
+working across the change.
+"""
+union DeleteTagPayload = DeleteTagActionSuccess | InvalidInputError | NotFoundError | UnauthorizedError | UnexpectedError | RestProxyError
+
+"""
+Filters for listing an organization's tags. Omitted fields do not filter.
+"""
+input TagsFiltersInput {
+  """
+  Return only locked tags when true, only unlocked tags when false. Omit to
+  return both. See `Tag.isLocked` for what locking means.
+  """
+  isLocked: Boolean
+}
+
+"""Input for listing an organization's tags."""
+input TagsInput {
+  """
+  Filters to apply. When omitted, all of the organization's tags are returned.
+  """
+  filter: TagsFiltersInput
+
+  """
+  Organization to list tags for. The caller must be a member of this
+  organization.
+  """
+  organizationId: OrganizationId!
+}
+
+"""Input for fetching a single tag by id."""
+input TagByIdInput {
+  """The unique identifier of the tag to fetch."""
+  id: TagId!
+}
+
+"""An edge in a tag connection."""
+type TagEdge {
+  """A cursor for pagination."""
+  cursor: String!
+
+  """The tag at the end of the edge."""
+  node: Tag!
+}
+
+"""A page of an organization's tags."""
+type TagsConnection {
+  """The list of tag edges."""
+  edges: [TagEdge!]!
+
+  """Pagination information for the connection."""
+  pageInfo: PaginationPageInfo!
+
+  """The total number of tags matching the request, across every page."""
+  totalCount: Int!
+}
+
+"""
+A label an organization applies to posts and ideas so they can be grouped and
+filtered together. Tags belong to the organization and are shared by everyone
+in it, rather than being per channel or per person.
+"""
+type Tag {
+  """The tag's unique identifier."""
+  id: TagId!
+
+  """
+  The tag's color as a hex triplet, for example `#F523F1`. Use `colorName`
+  where you need a stable identifier rather than a literal color.
+  """
+  color: String!
+
+  """
+  Stable Buffer palette identifier derived from `color`.
+  Clients should map this value to platform- and theme-specific presentation,
+  falling back to `color` when this field is null or unsupported.
+  Returns null for custom or unrecognized colors.
+  """
+  colorName: TagColorName
+
+  """
+  Whether the tag is locked.
+  
+  A tag locks when the organization holds more tags than its plan allows,
+  typically after a downgrade. Buffer locks the excess rather than deleting it,
+  so nothing is lost if the organization upgrades again.
+  
+  A locked tag **cannot be edited** — `updateTag` rejects it. It can still be
+  read, deleted, and applied to posts through the API. Buffer's own apps also
+  hide locked tags when picking a tag for a post; that is a client convention,
+  not something the API enforces.
+  
+  Locking is recalculated when the organization's plan changes, and deleting an
+  unlocked tag frees a slot for the oldest locked one.
+  """
+  isLocked: Boolean!
+
+  """The tag's display name, for example `Summer sales`."""
+  name: String!
+}
+
+"""The scope to select team members from. Provide exactly one field."""
+input TeamMemberSelectionScopeInput {
+  """
+  Select from the members who can read Notes on this channel.
+  The organization is derived from the channel.
+  """
+  channelId: ChannelId
+
+  """Select from the members of this organization."""
+  organizationId: OrganizationId
+}
+
+"""The team members to offer for selection."""
+input SelectableTeamMembersInput {
+  """The scope to select team members from."""
+  scope: TeamMemberSelectionScopeInput!
+
+  """
+  A case-insensitive substring to match against name or email. Omitted, null
+  or blank returns every member in scope. Reset `after` to null when this
+  changes, because the cursor is only meaningful within one filtered list.
+  """
+  search: String
+}
+
+"""
+A team member the requesting account may select, for example to mention in a
+Note. It carries only what a picker shows. The team-management fields on
+`TeamMember`, such as roles and channel permissions, stay with the
+`teamMembers` query, which needs more access than this one.
+"""
+type SelectableTeamMember {
+  """The member's Account ID."""
+  id: AccountId!
+
+  """The member's avatar URL."""
+  avatar: String!
+
+  """The member's email address."""
+  email: String!
+
+  """
+  Whether the member's access to the organization is locked. On an
+  organization with Roles, a locked member with an assigned role keeps
+  viewer-level access and can still be selected. Locked members receive no
+  Notes notifications while locked.
+  """
+  isLocked: Boolean!
+
+  """The member's name. Null if the member has not set one."""
+  name: String
+
+  """
+  The member's Buffer account URN, in the form
+  `urn:buffer:account:<account-id>`. Use it as the `serviceEntityId` of a
+  mention annotation. Selecting a member does not authorize a mention: a Note
+  write checks every mentioned account against the Note's subject.
+  """
+  urn: String!
+}
+
+"""A selectable team member and its pagination cursor."""
+type SelectableTeamMemberEdge {
+  """The opaque cursor for this team member."""
+  cursor: String!
+
+  """The team member."""
+  node: SelectableTeamMember!
+}
+
+"""A page of selectable team members."""
+type SelectableTeamMembersConnection {
+  """The team members in this page."""
+  edges: [SelectableTeamMemberEdge!]!
+
+  """The pagination information for this page."""
+  pageInfo: PaginationPageInfo!
+}
+
+"""Instagram audio catalog type from Meta's Audio API."""
+enum InstagramAudioType {
+  """Licensed music from Meta's audio catalog."""
+  music
+
+  """Audio created by an Instagram account."""
+  originalSound
+}
+
+"""
+An Instagram music track or original sound that can be attached to a Reel.
+"""
+type InstagramAudio {
+  """Meta audio asset ID"""
+  id: String!
+
+  """Temporary artwork URL from Meta. May be null."""
+  coverArtworkUrl: URL
+
+  """Creator username for original sounds"""
+  creatorUsername: String
+
+  """Artist name for licensed music"""
+  displayArtist: String
+
+  """Duration of the audio in milliseconds"""
+  duration: Int!
+
+  """Temporary preview URL from Meta. May be null."""
+  previewUrl: URL
+
+  """Display title for the audio"""
+  title: String!
+
+  """Whether this asset is licensed music or an original sound"""
+  type: InstagramAudioType!
+}
+
+"""Input for searching Instagram audio for one channel."""
+input SearchInstagramAudioInput {
+  """Music or original sound catalog"""
+  audioType: InstagramAudioType!
+
+  """Instagram channel to search audio for"""
+  channelId: ChannelId!
+
+  """
+  Search text. Required. Use trendingInstagramAudio for trending results.
+  """
+  query: String!
+}
+
+"""Input for trending Instagram audio for one channel."""
+input TrendingInstagramAudioInput {
+  """Music or original sound catalog"""
+  audioType: InstagramAudioType!
+
+  """Instagram channel to load trending audio for"""
+  channelId: ChannelId!
+}
+
+"""Success response for searching Instagram audio"""
+type SearchInstagramAudioSuccess {
+  """Matching or trending audio assets"""
+  audio: [InstagramAudio!]!
+}
+
+"""Payload returned when searching Instagram audio"""
+union SearchInstagramAudioPayload = SearchInstagramAudioSuccess | ChannelRefreshRequired
+
+"""Input for refreshing a single Instagram audio asset"""
+input InstagramAudioInput {
+  """Meta audio asset ID"""
+  audioId: String!
+
+  """Instagram channel used to authorize the refresh"""
+  channelId: ChannelId!
+}
+
+"""Payload returned when refreshing Instagram audio metadata"""
+union InstagramAudioPayload = InstagramAudioSuccess | ChannelRefreshRequired
+
+"""Refreshed metadata for one Instagram audio asset."""
+type InstagramAudioSuccess {
+  """Refreshed audio metadata."""
+  audio: InstagramAudio!
+}
+
+"""Input for browsing trending music and original sounds."""
+input InstagramAudioCatalogInput {
+  """Instagram channel used to authorize the catalog request."""
+  channelId: ChannelId!
+}
+
+"""Input for searching both Instagram audio catalogs."""
+input SearchInstagramAudioCatalogInput {
+  """Instagram channel used to authorize the search."""
+  channelId: ChannelId!
+
+  """Search text. Must not be blank."""
+  query: String!
+}
+
+"""
+Combined music and original sound results, with duplicate audio IDs removed.
+"""
+type InstagramAudioCatalogSuccess {
+  """
+  Available tracks, with duplicate audio IDs removed. Meta's order within each
+  catalog is preserved.
+  
+  Browsing returns music first, then original sounds. Search returns original
+  sounds first, then music, to better reflect the search text: creators write
+  original sound titles, so they usually contain the words people search for,
+  while music results often don't match the query.
+  """
+  audio: [InstagramAudio!]!
+
+  """
+  Catalogs that failed to load. Results from successful catalogs are still returned,
+  including an empty list if that catalog has no available tracks.
+  If both catalogs fail, the query returns an error instead.
+  """
+  failedAudioTypes: [InstagramAudioType!]!
+}
+
+"""Combined Instagram audio results or a request to refresh the channel."""
+union InstagramAudioCatalogPayload = InstagramAudioCatalogSuccess | ChannelRefreshRequired
+
+"""Types of reactions that can be applied to a comment."""
+enum ReactionType {
+  """A celebrate reaction. Supported only for LinkedIn comments."""
+  celebrate
+
+  """An external reaction on the comment, using an external link."""
+  external
+
+  """A funny reaction. Supported only for LinkedIn comments."""
+  funny
+
+  """An insightful reaction. Supported only for LinkedIn comments."""
+  insightful
+
+  """A like reaction on the comment."""
+  like
+
+  """A love reaction. Supported only for LinkedIn comments."""
+  love
+
+  """A support reaction. Supported only for LinkedIn comments."""
+  support
+}
+
+"""Rate limit configuration for forced sync operations."""
+type ForcedSyncRateLimit {
+  """Number of allowed forced backfill attempts within the period."""
+  allowedAttempts: Int!
+
+  """Rate limit period in seconds for forced backfill operations."""
+  period: Int!
+}
+
+"""Represents the authorization evaluation result for a feature."""
+enum AuthorizationStatus {
+  """Authorization exists but requires token refresh"""
+  needsRefresh
+
+  """
+  The client version is below the minimum required to access this feature.
+  The client should prompt the user to upgrade.
+  """
+  needsUpgrade
+
+  """
+  Insufficient data to determine authorization state.
+  Typically indicates missing scopes or webhook metadata.
+  """
+  notEnoughData
+
+  """
+  The connected platform user's role/permissions are insufficient for this
+  feature, so reconnecting with the same user cannot fix it. Clients should
+  prompt the user to contact an administrator of the platform account (or
+  have one connect the channel) instead of offering a reconnect.
+  """
+  notEnoughRights
+
+  """Authorization is valid and the feature can be used."""
+  ok
+}
+
+"""
+Discriminator used in inputs/filters to scope a query to specific types.
+"""
+enum EngagementType {
+  """Fetch comments (direct replies to Buffer-managed posts)."""
+  comment
+
+  """
+  Direct messages (private conversations between the account and another user).
+  """
+  directMessage
+
+  """Fetch mentions (references to the account across the network)."""
+  mention
+}
+
+"""
+Organization configuration. `channels` carries the per-connected-channel config
+the actor can view (including per-`Feature` `authorizationStatus`); `services`
+carries the service-level capability catalog — the engagement and content config
+for every supported `service` + `channelType`, independent of which channels are
+connected (e.g. for composing before a channel is connected);
+`collaborationRoleAbilities` carries the Roles ability catalog.
+
+`@public` is set per field rather than on the type, so a field is external only
+when tagged. A new field is internal until it carries its own `@public`.
+"""
+type Configuration {
+  """Per-connected-channel config for every channel the actor can view."""
+  channels: [ChannelConfiguration!]!
+
+  """
+  Service-level capability catalog for every supported service + channel type.
+  """
+  services: [ServiceConfiguration!]!
+}
+
+"""
+Everything for one connected channel: its engagement capabilities, its full
+`content` config, and per-feature authorization. Each channel carries
+its own complete config — there is no service-level default to merge against.
+"""
+type ChannelConfiguration {
+  """
+  Authorization status per feature for this channel. A feature is a capability
+  a channel can expose — e.g. posting, commenting, mentions, insights (see the
+  `Feature` enum).
+  """
+  authorizationStatus: [FeatureAuthorizationStatus!]!
+
+  """The connected channel this config describes."""
+  channelId: ChannelId!
+
+  """The channel's type within the service (e.g. profile, page, business)."""
+  channelType: ChannelType!
+
+  """
+  Content config — one entry per content type, or a single entry
+  grouping several types that share identical rules (post / story / reel /
+  comment reply).
+  """
+  content: [ContentConfiguration!]!
+
+  """
+  Engagement capabilities — one entry per engagement type. Empty when
+  engagement isn't supported on the channel.
+  """
+  engagement: [EngagementTypeConfiguration!]!
+
+  """The channel's social service (e.g. twitter, instagram)."""
+  service: Service!
+}
+
+"""
+Service-level configuration for one supported `service` + `channelType`: its
+engagement capabilities and `content`. The channel-agnostic baseline — today
+the same fields as `ChannelConfiguration` minus `channelId` and the per-channel
+`authorizationStatus`. This overlap is incidental, not a contract: it is a
+distinct type so the service-level catalog can evolve independently of the
+per-channel config (either side may add fields the other doesn't share).
+"""
+type ServiceConfiguration {
+  """The channel type within the service (e.g. profile, page, business)."""
+  channelType: ChannelType!
+
+  """
+  Content config — one entry per content type, or a single entry
+  grouping several types that share identical rules. Empty when none is exposed.
+  """
+  content: [ContentConfiguration!]!
+
+  """
+  Engagement capabilities — one entry per engagement type. Empty when
+  engagement isn't supported for this service + channel type.
+  """
+  engagement: [EngagementTypeConfiguration!]!
+
+  """The social service this config describes (e.g. twitter, instagram)."""
+  service: Service!
+}
+
+"""
+A capability a channel can expose, spanning every domain. The shared key for
+per-channel `authorizationStatus`. Grows additively.
+"""
+enum Feature {
+  comment
+  directMessage
+  engagementReaction
+  insights
+  mention
+  posting
+}
+
+"""
+Pairs a feature with the channel's authorization status for it (token/scope
+level). One entry per authorization-gated feature the channel exposes.
+"""
+type FeatureAuthorizationStatus {
+  """
+  The feature this status describes — a capability a channel can expose, e.g.
+  posting, commenting, mentions, insights, reacting to engagements (see the
+  `Feature` enum).
+  """
+  feature: Feature!
+
+  """
+  Why the feature is in its current `status`, when a specific cause is known
+  (e.g. the connected platform user lacks rights on the account that owns
+  webhook subscriptions). Informative text for display/support — not a stable
+  machine key, so clients must not parse or switch on it. Null when the
+  status needs no explanation (`ok`) or no specific cause was identified.
+  """
+  reason: String
+
+  """
+  Whether the channel is currently authorized to use `feature`: `ok` (usable),
+  `needsRefresh` (token refresh required), `notEnoughData` (missing scopes /
+  webhook metadata), `needsUpgrade` (client below the minimum version —
+  applies only to the mobile apps), or `notEnoughRights` (the connected
+  platform user's role is insufficient — reconnecting cannot fix it). See the
+  `AuthorizationStatus` enum.
+  """
+  status: AuthorizationStatus!
+}
+
+"""AI features supported for an engagement type. Grows additively."""
+enum AiFeature {
+  insights
+  suggestions
+}
+
+"""
+Per-engagement-type configuration. One entry per kind; `engagementType`
+discriminates. Adding a kind is additive — a new `EngagementType` value, not a
+new type.
+"""
+type EngagementTypeConfiguration {
+  """
+  The kind of engagement this entry configures (comment / mention /
+  directMessage).
+  """
+  engagementType: EngagementType!
+
+  """
+  Media configuration. Always present; `supportsMedia: false` = the platform
+  doesn't deliver attached media to Buffer, so none can be shown.
+  """
+  media: MediaConfiguration!
+
+  """
+  Optional network-specific engagement metadata (e.g. Google Business).
+  null when none applies.
+  """
+  metadata: EngagementMetadata
+
+  """
+  Reactions. Always present; empty `supportedReactions` with `supportsAnyEmoji:
+  false` = reacting via Buffer isn't supported.
+  """
+  reactions: ReactionsConfiguration!
+
+  """
+  Reply configuration. Always present; `supportsReplying: false` = replying via
+  Buffer not supported.
+  """
+  replying: ReplyingConfiguration!
+
+  """AI features supported for this engagement type. Empty when none."""
+  supportedAiFeatures: [AiFeature!]!
+
+  """
+  Sync configuration — realTime/polling mechanism plus optional forced-sync detail.
+  """
+  syncData: SyncDataConfiguration!
+}
+
+"""
+Network-specific engagement metadata. Single-member union for now; grows
+additively as more networks contribute their own shape.
+"""
+union EngagementMetadata = GoogleBusinessEngagementMetadata
+
+"""
+Google Business-specific engagement metadata. Distinct from the channel-level
+`GoogleBusinessMetadata` (which carries location data) — this is the engagement
+surface's rating/note metadata.
+"""
+type GoogleBusinessEngagementMetadata {
+  """Whether engagements on this channel carry a user star rating."""
+  hasUserRating: Boolean!
+
+  """
+  A permanent note surfaced to the user about this channel's engagements.
+  Empty when there is nothing to tell the user.
+  """
+  permanentNote: String!
+}
+
+"""
+Sync configuration for an engagement type — the realTime/polling
+`syncDataMechanism` plus optional forced-sync detail.
+"""
+type SyncDataConfiguration {
+  """
+  Forced-sync detail. A forced sync is a user-triggered (manual) refresh that
+  fetches new items on demand instead of waiting for the next scheduled poll or
+  push. `null` when this kind's sync mechanism has no forced-sync support.
+  """
+  forcedSyncConfiguration: ForcedSyncConfiguration
+
+  """
+  How this engagement type syncs on this channel: `realTime` (push) or
+  `polling` (pull).
+  """
+  syncDataMechanism: SyncDataMechanism!
+}
+
+"""
+How items of an engagement type are pulled / pushed. `realTime` covers push
+(webhook / firehose); `polling` is pull.
+"""
+enum SyncDataMechanism {
+  polling
+  realTime
+}
+
+"""
+Forced-sync detail. Present only when the kind's sync mechanism supports a
+forced (manual) sync.
+"""
+type ForcedSyncConfiguration {
+  """
+  Rate limit for forced syncs. `null` when forced sync is unthrottled. Reuses
+  the `ForcedSyncRateLimit` type defined by the comment schema.
+  """
+  forcedSyncRateLimit: ForcedSyncRateLimit
+
+  """
+  How often, in seconds, the channel is automatically polled for new items.
+  """
+  pollInterval: Int!
+}
+
+"""
+Reactions configuration. `restingIcon` is always populated; `supportedReactions`
+empty = reacting via Buffer isn't supported (unless `supportsAnyEmoji`), one =
+single-button liking, multiple = a reaction set.
+"""
+type ReactionsConfiguration {
+  """
+  Whether reacting needs an OAuth scope beyond the ones a base connection
+  grants. When true, check the channel's `engagementReaction` entry in
+  `authorizationStatus` before offering the reaction — the channel may need a
+  reconnect to grant it. On the service-level catalog this is channel-agnostic
+  and may overstate the requirement, since it can vary with a channel's login
+  flow; the per-channel configuration resolves it exactly.
+  """
+  requiresAuthorization: Boolean!
+
+  """The resting-state icon — the pre-reaction icon."""
+  restingIcon: ReactionIcon!
+
+  """
+  The reactions the user can apply. Empty when reacting via Buffer isn't
+  supported, or when `supportsAnyEmoji` is true.
+  """
+  supportedReactions: [EngagementSupportedReaction!]!
+
+  """
+  Whether the user can react with any single emoji (e.g. direct messages). When
+  true, offer an emoji picker and send the chosen emoji to the network's emoji
+  reaction mutation; `supportedReactions` is empty.
+  """
+  supportsAnyEmoji: Boolean!
+}
+
+"""
+A supported reaction. `reactionType` is the opaque identity echoed back on the
+react mutation; `visual` carries everything needed to render it.
+"""
+type EngagementSupportedReaction {
+  """
+  The kind of reaction a user can apply (e.g. like, love, celebrate). This is
+  the identifier the client sends back to the react mutation when the user picks
+  this reaction; treat it as an opaque value rather than parsing it.
+  """
+  reactionType: ReactionType!
+
+  """How to render this reaction (built-in icon or network image)."""
+  visual: ReactionVisual!
+}
+
+"""
+How to render a reaction. The client switches on `__typename` purely as a
+render strategy (built-in icon vs network image) — never on the network or the
+reaction identity.
+"""
+union ReactionVisual = IconVisual | ImageVisual
+
+"""Render from the built-in client icon set."""
+type IconVisual {
+  """The built-in icon to render."""
+  icon: ReactionIcon!
+}
+
+"""Render a network-supplied image (e.g. LinkedIn-branded reactions)."""
+type ImageVisual {
+  """URL of the network-supplied reaction image."""
+  url: String!
+}
+
+"""Standard reaction icon set used by `IconVisual`. Grows additively."""
+enum ReactionIcon {
+  heart
+
+  """🙂 (U+1F642)."""
+  smilingFace
+  star
+  thumbsUp
+}
+
+"""
+Reply configuration for an engagement type. A rich object (not a bare boolean)
+so reply metadata can be added later.
+"""
+type ReplyingConfiguration {
+  """Whether replies should be prefixed with the author's @mention."""
+  prefixReplyWithMention: Boolean!
+
+  """Whether replying to this engagement type via Buffer is supported."""
+  supportsReplying: Boolean!
+
+  """Whether a reply can quote a specific message."""
+  supportsReplyTo: Boolean!
+}
+
+"""
+Media configuration for an engagement type — whether media attached to an
+engagement reaches Buffer and can therefore be shown to the user.
+"""
+type MediaConfiguration {
+  """
+  User-facing explanation of what the client can do about the missing media,
+  worded for the platform (e.g. "Instagram doesn't send media with mentions to
+  Buffer. Open the mention natively to see the full content."). Display text
+  only — not a stable machine key, so clients must not parse or switch on it.
+  Null when `supportsMedia` is true.
+  """
+  additionalInformation: String
+
+  """
+  User-facing explanation of why media isn't shown. Display text only — not a
+  stable machine key, so clients must not parse or switch on it. Null when
+  `supportsMedia` is true.
+  """
+  disclaimer: String
+
+  """
+  Whether media attached to this engagement type is delivered by the platform
+  and can be shown.
+  """
+  supportsMedia: Boolean!
+}
+
+"""
+Config for one or more content types that share the same properties
+and rules. Grouping several `configurationContentTypes` in one entry avoids
+duplicating an identical config (e.g. story + reel).
+"""
+type ContentConfiguration {
+  """
+  The content type(s) this config applies to (grouped when rules are identical).
+  """
+  configurationContentTypes: [ConfigurationContentType!]!
+
+  """Validation rules that decide whether a draft is valid."""
+  rules: [ValidationRule!]!
+
+  """The properties these content types support; absence means unsupported."""
+  supportedProperties: [ContentProperty!]!
+}
+
+"""The kinds of content a channel can compose. Grows additively."""
+enum ConfigurationContentType {
+  comment
+  post
+  reel
+  story
+}
+
+"""
+A property a content type can carry. Support is expressed by inclusion in
+`supportedProperties` — there are no exclusion lists. Grows additively.
+"""
+enum ContentProperty {
+  board
+  document
+  firstComment
+  gif
+  image
+  imageAltText
+  linkAttachment
+  retweetAttachment
+  text
+  thread
+  video
+}
+
+"""Media formats a `FormatRule` can allow-list. Grows additively."""
+enum MediaFormat {
+  gif
+  jpeg
+  mov
+  mp4
+  pdf
+  png
+  webm
+}
+
+"""
+A validation rule constraining how a content property may be used. Each
+concrete rule carries only the fields it needs; new constraint kinds are
+additive (a new type implementing this interface). Clients switch on
+`__typename`.
+"""
+interface ValidationRule {
+  """The content property this rule constrains."""
+  property: ContentProperty!
+}
+
+"""
+Bounds how many of a property are allowed. `min` null/absent = no lower bound
+(optional); `min: 1` = required. `max` null = unlimited. At least one of `min`
+or `max` is always present — a rule that bounds neither is never emitted.
+"""
+type CountRule implements ValidationRule {
+  """Maximum allowed count. Null = unlimited."""
+  max: Int
+
+  """Minimum allowed count. Null = no lower bound (optional)."""
+  min: Int
+
+  """The content property this rule constrains."""
+  property: ContentProperty!
+}
+
+"""
+Caps the character length of a text-like property (e.g. 280 for X post text).
+"""
+type LengthRule implements ValidationRule {
+  """Maximum allowed character length."""
+  maxLength: Int!
+
+  """The content property this rule constrains."""
+  property: ContentProperty!
+}
+
+"""`property` cannot be combined with any of `conflictsWith`."""
+type ExclusiveRule implements ValidationRule {
+  """Properties that `property` cannot be combined with."""
+  conflictsWith: [ContentProperty!]!
+
+  """The content property this rule constrains."""
+  property: ContentProperty!
+}
+
+"""`property` requires all of `requires` to also be present."""
+type RequiresRule implements ValidationRule {
+  """The content property this rule constrains."""
+  property: ContentProperty!
+
+  """Properties that must also be present when `property` is used."""
+  requires: [ContentProperty!]!
+}
+
+"""Caps the byte size of a media property."""
+type FileSizeRule implements ValidationRule {
+  """Maximum allowed size in megabytes (MB)."""
+  maxMegabytes: Int!
+
+  """The content property this rule constrains."""
+  property: ContentProperty!
+}
+
+"""Caps the duration of a time-based media property."""
+type DurationRule implements ValidationRule {
+  """Maximum allowed duration in seconds."""
+  maxDurationSeconds: Int!
+
+  """The content property this rule constrains."""
+  property: ContentProperty!
+}
+
+"""Restricts a media property to specific formats (allow-list)."""
+type FormatRule implements ValidationRule {
+  """The formats `property` is allowed to use."""
+  allowedFormats: [MediaFormat!]!
+
+  """The content property this rule constrains."""
+  property: ContentProperty!
+}
+
+"""Input for the configuration query."""
+input ConfigurationInput {
+  """The organization to return configuration for."""
+  organizationId: OrganizationId!
+}
+
+"""Posting schedule for a specific day of the week"""
+type ScheduleV2 {
+  """The day of the week: mon, tue, wed, thu, fri, sat, sun"""
+  day: DayOfWeek!
+
+  """Indicates if this day is paused in the posting schedule."""
+  paused: Boolean!
+
+  """The times the channel is scheduled to post on the day: HH:MM"""
+  times: [String!]!
+}
+
+"""
+Input for an end user creating a post template. Buffer-curated
+taxonomy fields are server-defaulted; setting them is only available
+to official Buffer clients.
+"""
+input CreatePostTemplateInput {
+  """The main content body of the template, may contain {{placeholders}}."""
+  body: String!
+
+  """
+  A short user-facing description of the template. Nullable for
+  backwards-compat at the GraphQL boundary — the resolver rejects
+  null/empty values with a clear input error so the underlying
+  storage contract (non-empty string) is still honored.
+  """
+  description: String
+
+  """The emoji associated with the template."""
+  emoji: String
+
+  """
+  Organization the template belongs to. The caller must be a member of
+  this organization. For `internal` visibility this is the team scope;
+  for `private` it's recorded on the template but does not affect
+  visibility.
+  """
+  organizationId: OrganizationId!
+
+  """The title of the template."""
+  title: String!
+
+  """
+  Defaults to `private` if omitted. `public` is rejected — it is only
+  available to official Buffer clients.
+  """
+  visibility: PostTemplateVisibility
+}
+
+"""Successful result of an end user creating a post template."""
+type CreatePostTemplateSuccess {
+  """The newly created post template."""
+  postTemplate: PostTemplate!
+}
+
+"""Result of an end user creating a post template."""
+union CreatePostTemplatePayload = CreatePostTemplateSuccess | VoidMutationError
+
+"""
+Input for an end user updating a post template. Buffer-curated
+taxonomy fields are ignored; setting them is only available to
+official Buffer clients.
+"""
+input UpdatePostTemplateInput {
+  """The ID of the template to update."""
+  id: PostTemplateId!
+
+  """The main content body of the template, may contain {{placeholders}}."""
+  body: String
+
+  """A short user-facing description of the template."""
+  description: String
+
+  """The emoji associated with the template."""
+  emoji: String
+
+  """The title of the template."""
+  title: String
+
+  """
+  `public` is rejected — it is only available to official Buffer
+  clients.
+  """
+  visibility: PostTemplateVisibility
+}
+
+"""Successful result of an end user updating a post template."""
+type UpdatePostTemplateSuccess {
+  """The updated post template."""
+  postTemplate: PostTemplate!
+}
+
+"""Result of an end user updating a post template."""
+union UpdatePostTemplatePayload = UpdatePostTemplateSuccess | VoidMutationError
+
+"""Input for an end user deleting a post template."""
+input DeletePostTemplateInput {
+  """The ID of the template to delete."""
+  id: PostTemplateId!
+}
+
+"""Result of an end user deleting a post template."""
+union DeletePostTemplatePayload = EmptySuccess | VoidMutationError
+
+"""Input for fetching a single post template by ID."""
+input PostTemplateInput {
+  """The unique identifier of the template to fetch."""
+  id: PostTemplateId!
+}
+
+"""
+Input for fetching templates accessible to the current actor for the
+template library. A caller can never reach templates outside their own
+scope — the server pins `private` to the actor's account and `internal`
+to the supplied `organizationId` regardless of input.
+"""
+input PostTemplatesInput {
+  """Optional filters to narrow the template list."""
+  filter: PostTemplatesFilterInput
+
+  """
+  Organization to scope `internal`-visibility templates to. The caller
+  must be a member of this organization.
+  """
+  organizationId: OrganizationId!
+}
+
+"""
+Filters for the template library. Visibility narrows the actor-scoped
+result set; it can never widen it.
+"""
+input PostTemplatesFilterInput {
+  """
+  Narrow the result to a single visibility scope. Omit to receive the
+  union of: public templates, internal templates from the supplied
+  organization, and private templates from the actor's account.
+  """
+  visibility: PostTemplateVisibility
+}
+
+"""An edge in a post template connection."""
+type PostTemplateEdge {
+  """A cursor for pagination."""
+  cursor: String!
+
+  """The post template node at the end of the edge."""
+  node: PostTemplate!
+}
+
+"""A paginated connection of post templates."""
+type PostTemplatesConnection {
+  """The list of post template edges."""
+  edges: [PostTemplateEdge!]!
+
+  """Pagination information for the connection."""
+  pageInfo: PaginationPageInfo!
+
+  """The total number of templates matching the filters."""
+  totalCount: Int!
+}
+
+"""
+The visibility level of a post template. `public` is reserved for
+Buffer-curated templates; setting it is only available to official
+Buffer clients.
+"""
+enum PostTemplateVisibility {
+  """All members of the template's organization can access this template."""
+  internal
+
+  """Only the creator can access this template."""
+  private
+
+  """
+  Anyone across all organizations can access this template. Reserved
+  for Buffer-curated templates — `createPostTemplate` and
+  `updatePostTemplate` reject this value; setting it is only available
+  to official Buffer clients. It appears in read results.
+  """
+  public
+}
+
+"""A post template used for content inspiration."""
+type PostTemplate {
+  """The unique identifier for the template."""
+  id: PostTemplateId!
+
+  """The main content body of the template, may contain {{placeholders}}."""
+  body: String!
+
+  """A short user-facing description of the template."""
+  description: String!
+
+  """The emoji associated with the template."""
+  emoji: String!
+
+  """The organization that owns this template."""
+  organizationId: OrganizationId!
+
+  """The title of the template."""
+  title: String!
+
+  """
+  The visibility level of the template. `public` is returned for
+  Buffer-managed templates.
+  """
+  visibility: PostTemplateVisibility!
+
+  """The date and time the template was created."""
+  createdAt: DateTime!
+
+  """The date and time the template was last updated."""
+  updatedAt: DateTime!
+}
+
+"""The type of media attached to a post"""
+enum MediaType {
+  image
+  gif
+  video
+  link
+  document
+  unsupported
+}
+
+"""Input type for tag information used in idea creation"""
+input TagInput {
+  id: ID!
+  name: String!
+  color: String!
+}
+
+"""Input type for the source information of media attached to an idea"""
+input IdeaMediaSourceInput {
+  name: String!
+  id: String
+  trigger: String
+
+  """for unsplash only"""
+  author: String
+  authorUrl: String
+}
+
+input IdeaMediaInput {
+  """The URL of the media"""
+  url: String!
+
+  """Alternative text for the media"""
+  alt: String
+
+  """Thumbnail URL for the media"""
+  thumbnailUrl: String
+
+  """
+  The type of media (image, gif, video, link, document, unsupported). Note: 'video' is not supported via public API
+  """
+  type: MediaType!
+
+  """The size of the media in bytes"""
+  size: Int
+
+  """Source information for the media"""
+  source: IdeaMediaSourceInput
+}
+
+"""Tag snapshot associated with content"""
+type PublishingTag {
+  id: ID!
+
+  """Hex color for tag e.g #F523F1"""
+  color: String!
+
+  """
+  Stable Buffer palette identifier derived from `color`.
+  Clients should map this value to platform- and theme-specific presentation,
+  falling back to `color` when this field is null or unsupported.
+  Returns null for custom or unrecognized colors.
+  """
+  colorName: TagColorName
+  name: String!
+}
+
+"""Idea groups are used to organize ideas in the board"""
+type IdeaGroup {
+  """Unique identifier for the idea group."""
+  id: ID!
+
+  """Whether the idea group is locked."""
+  isLocked: Boolean!
+
+  """The name of the idea group."""
+  name: String!
+}
+
+"""Input type for retrieving idea groups by organization ID."""
+input IdeaGroupsInput {
+  """Unique identifier for the organization."""
+  organizationId: ID!
+}
+
+"""Media source for the idea, e.g. Unsplash, Gifphy, etc."""
+type IdeaMediaSource {
+  """Unique identifier from the source platform"""
+  id: String
+
+  """Name of the content creator/author"""
+  author: String
+
+  """URL to the author's profile on the source platform"""
+  authorUrl: String
+
+  """Name of the media source platform (e.g., 'Unsplash', 'Giphy')"""
+  name: String!
+}
+
+"""Media attached to an idea"""
+type IdeaMedia {
+  """Unique identifier for the media in Buffer's upload system"""
+  id: ID!
+
+  """Alternative text description for accessibility"""
+  alt: String
+
+  """File size in bytes"""
+  size: Int
+
+  """Source platform information for the media"""
+  source: IdeaMediaSource
+
+  """URL to a smaller version of the media for preview purposes"""
+  thumbnailUrl: String
+
+  """Type of media (e.g., image, video, gif)"""
+  type: MediaType!
+
+  """Direct URL to access the media file"""
+  url: String!
+}
+
+"""Content of an idea"""
+type IdeaContent {
+  """Indicates whether AI tools were used in creating this idea"""
+  aiAssisted: Boolean!
+
+  """
+  DateTime set by user associated with the idea - this often reflects a target publish date.
+  """
+  date: DateTime
+
+  """List of media items attached to the idea"""
+  media: [IdeaMedia!]
+
+  """
+  Services tagged by the user - this is typically used to annotate ideas with their target services
+  """
+  services: [Service!]!
+
+  """Tags used to categorize and organize the idea"""
+  tags: [PublishingTag!]!
+
+  """Main body text or description of the idea"""
+  text: String
+
+  """Title or headline of the idea"""
+  title: String
+}
+
+"""Ideas are the main entity in the create space"""
+type Idea {
+  """Unique identifier for the idea"""
+  id: ID!
+
+  """The actual content and metadata of the idea"""
+  content: IdeaContent!
+
+  """ID of the group this idea belongs to (if any)"""
+  groupId: ID
+
+  """ID of the organization that owns this idea"""
+  organizationId: ID!
+
+  """Numerical position for ordering within a group"""
+  position: Float
+
+  """Unix timestamp of when the idea was created"""
+  createdAt: Int!
+
+  """Unix timestamp of when the idea was last modified"""
+  updatedAt: Int!
+}
+
+"""Pagination type for Ideas"""
+type IdeaEdge {
+  """Opaque cursor for pagination, used to fetch subsequent pages"""
+  cursor: String!
+
+  """The idea object"""
+  node: Idea!
+}
+
+"""Filtering criteria for the ideas list."""
+input IdeasInput {
+  """
+  Filter ideas by group membership. Omit this field entirely to return ideas
+  across all groups.
+  """
+  groupFilter: IdeasGroupFilter
+
+  """The organization to fetch ideas from."""
+  organizationId: OrganizationId!
+
+  """Filter ideas by tags using TagComparator."""
+  tagsFilter: TagComparator
+}
+
+"""
+Selects which ideas to return by group membership. Exactly one field must be
+provided (enforced by @oneOf). To return ideas from all groups, omit
+`groupFilter` on IdeasInput rather than setting a field here.
+"""
+input IdeasGroupFilter {
+  """Return only ideas that belong to these specific groups (union/OR)."""
+  groups: [ID!]
+
+  """
+  Return ideas by a group-membership bucket rather than by specific group IDs.
+  """
+  membership: IdeaGroupMembership
+}
+
+"""Named buckets for filtering ideas by their group membership."""
+enum IdeaGroupMembership {
+  """Only ideas that are assigned to a group."""
+  grouped
+
+  """Only ideas that are not assigned to any group."""
+  ungrouped
+}
+
+"""Relay connection for paginated ideas."""
+type IdeasConnection {
+  """List of idea edges containing the ideas and their cursors"""
+  edges: [IdeaEdge!]!
+
+  """Pagination metadata including hasNextPage and endCursor"""
+  pageInfo: PaginationPageInfo!
+}
+
+"""content input for creating/updating an idea"""
+input IdeaContentInput {
+  """Whether AI tools were used in creation"""
+  aiAssisted: Boolean
+
+  """Target date for the idea, often used for planning publish schedules"""
+  date: DateTime
+
+  """List of media items to attach"""
+  media: [IdeaMediaInput!]
+
+  """Services associated with the idea for targeting specific platforms"""
+  services: [Service!]
+
+  """Tags to categorize the idea"""
+  tags: [TagInput!]
+
+  """Main body text or description"""
+  text: String
+
+  """Title or headline of the idea"""
+  title: String
+}
+
+"""idea group input for create/update"""
+input IdeaGroupInput {
+  """Target group ID (null for unassigned group)"""
+  groupId: ID
+
+  """ID of idea to place after (null for top position)"""
+  placeAfterId: ID
+}
+
+"""createIdea input type"""
+input CreateIdeaInput {
+  """Content and metadata for the new idea"""
+  content: IdeaContentInput!
+
+  """Call-to-action identifier for analytics tracking"""
+  cta: String
+
+  """Group placement (null for unassigned group)"""
+  group: IdeaGroupInput
+
+  """Organization ID that will own the idea"""
+  organizationId: ID!
+
+  """Template ID used to create the idea"""
+  templateId: String
+}
+
+"""createIdea response type"""
+type IdeaResponse {
+  """The affected idea"""
+  idea: Idea
+
+  """
+  If true, the client should refresh the ideas list because other ideas might have been moved
+  """
+  refreshIdeas: Boolean!
+}
+
+"""createIdea response (including errors)"""
+union CreateIdeaPayload = Idea | IdeaResponse | InvalidInputError | UnauthorizedError | UnexpectedError | LimitReachedError
