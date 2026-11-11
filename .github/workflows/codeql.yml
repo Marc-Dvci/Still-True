@@ -2,6 +2,7 @@
 # visible only to people with write access.
 name: codeql
 on:
+  workflow_dispatch:
   push:
     branches: [main]
   pull_request:
