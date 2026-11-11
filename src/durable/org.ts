@@ -759,29 +759,36 @@ export class OrgDO extends DurableObject<Env> {
     return suggestRewrite(this.env.AI as unknown as TextModel, row.text, finding);
   }
 
-  async createSamples(channelId: string): Promise<{ created: number; messages: string[] }> {
+  async createSamples(channelId: string): Promise<{ created: number; ids: string[]; messages: string[] }> {
     const account = this.get<{ timezone: string }>("account");
     const client = this.client();
     const messages: string[] = [];
+    const ids: string[] = [];
     let created = 0;
     for (const draft of sampleDrafts(this.env.PUBLIC_ORIGIN ?? "", account?.timezone ?? "UTC", this.now())) {
-      const result = await client.request<{ createPost: MutationResult }>(CREATE_DRAFT, {
-        input: {
-          channelId,
-          text: draft.text,
-          mode: "customScheduled",
-          dueAt: draft.dueAt,
-          schedulingType: "automatic",
-          saveToDraft: true,
-          assets: [],
+      const result = await client.request<{ createPost: MutationResult & { post?: { id: string } } }>(
+        CREATE_DRAFT,
+        {
+          input: {
+            channelId,
+            text: draft.text,
+            mode: "customScheduled",
+            dueAt: draft.dueAt,
+            schedulingType: "automatic",
+            saveToDraft: true,
+            assets: [],
+          },
         },
-      });
+      );
       const failure = mutationFailed(result.createPost);
       if (failure) messages.push(failure);
-      else created += 1;
+      else {
+        created += 1;
+        if (result.createPost.post?.id) ids.push(result.createPost.post.id);
+      }
     }
     await this.appendLedger(null, "samples_created", `${created} drafts on channel ${channelId}`);
-    return { created, messages };
+    return { created, ids, messages };
   }
 
   /** Replays the stored queue on a fire-drill day, at the same local times of day. */

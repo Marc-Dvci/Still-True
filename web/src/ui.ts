@@ -200,7 +200,13 @@ export function renderRow(row: RowModel, actions: RowActions = {}, open = false)
       : row.status === "draft" && row.verdict === "still_true"
         ? "draft"
         : row.verdict;
-  const label = row.status === "held" ? "Held" : (LABELS[statusKey] ?? statusKey);
+  // "Held" only for posts Still True moved to drafts; a draft with a hold-level problem reads "Fix first".
+  const label =
+    row.status === "held"
+      ? "Held"
+      : row.status === "draft" && row.verdict === "hold"
+        ? "Fix first"
+        : (LABELS[statusKey] ?? statusKey);
   const flapNode = flap(label, statusKey);
   const summary = el(
     "button",

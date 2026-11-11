@@ -120,7 +120,7 @@ export const suggest = (id: string, code: string) =>
 export const saveSettings = (settings: Partial<Settings>) =>
   call<Settings>("/api/me/settings", { method: "PUT", body: JSON.stringify(settings) });
 export const createSamples = (channelId: string) =>
-  call<{ created: number; messages: string[] }>("/api/me/samples", {
+  call<{ created: number; ids: string[]; messages: string[] }>("/api/me/samples", {
     method: "POST",
     body: JSON.stringify({ channelId }),
   });
