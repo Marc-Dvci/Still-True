@@ -4,11 +4,8 @@ import { extractLinks } from "../../src/core/links";
 
 // Responses recorded from api.buffer.com by scripts/live_check.ts (ids replaced). They pin the shapes
 // Still True reads to Buffer's real answers, not to the test stand-in.
-const recorded = (name: string) =>
-  JSON.parse(readFileSync(new URL(`../fixtures/buffer/${name}.json`, import.meta.url), "utf8")) as Record<
-    string,
-    never
-  >;
+const recorded = (name: string): unknown =>
+  JSON.parse(readFileSync(new URL(`../fixtures/buffer/${name}.json`, import.meta.url), "utf8"));
 
 interface Node {
   id: string;

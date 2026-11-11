@@ -42,7 +42,7 @@ jobs:
             echo
             echo "### Coverage of the decision core"
             echo
-            node scripts/coverage_summary.mjs
+            node scripts/coverage_summary.mjs || echo "No coverage report: an earlier step failed."
             echo
             echo "### Evaluation on the labelled cases"
             echo
