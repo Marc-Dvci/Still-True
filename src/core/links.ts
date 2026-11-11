@@ -2,11 +2,20 @@
 // (Facebook, LinkedIn, Bluesky and Threads link attachments, Instagram's link sticker).
 
 const URL_PATTERN = /\bhttps?:\/\/[^\s<>"'()]+|\bwww\.[a-z0-9-]+(?:\.[a-z0-9-]+)+[^\s<>"'()]*/gi;
-const TRAILING = /[.,;:!?…»”’)\]]+$/u;
+// Punctuation that ends a sentence rather than a URL. Trimmed with a loop from the end: a `[...]+$` regular
+// expression takes quadratic time on a long run of these characters that is not at the end (CodeQL
+// js/polynomial-redos).
+const TRAILING = new Set([...".,;:!?…»”’)]"]);
 export const MAX_LINKS = 5;
 
+export function trimTrailingPunctuation(raw: string): string {
+  let end = raw.length;
+  while (end > 0 && TRAILING.has(raw[end - 1] as string)) end -= 1;
+  return raw.slice(0, end);
+}
+
 export function normaliseUrl(raw: string): string | null {
-  const trimmed = raw.replace(TRAILING, "");
+  const trimmed = trimTrailingPunctuation(raw);
   const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
   try {
     const url = new URL(withScheme);

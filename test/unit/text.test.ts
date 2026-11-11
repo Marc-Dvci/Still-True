@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { countryForTimeZone } from "../../src/core/country";
 import { findDates, findRelative, findTimes, relativeKeys, resolveYear } from "../../src/core/datetext";
-import { extractLinks, linksInText, normaliseUrl } from "../../src/core/links";
+import { extractLinks, linksInText, normaliseUrl, trimTrailingPunctuation } from "../../src/core/links";
 import {
   findAll,
   fold,
@@ -156,5 +156,16 @@ describe("links", () => {
     ).toEqual(["https://a.example/x", "https://c.example/z"]);
     expect(normaliseUrl("javascript:alert(1)")).toBeNull();
     expect(extractLinks("no links", null)).toEqual([]);
+  });
+
+  it("trims closing punctuation in linear time, whatever the link field holds", () => {
+    expect(trimTrailingPunctuation("https://a.example/x?!)…»")).toBe("https://a.example/x");
+    expect(trimTrailingPunctuation("https://a.example/(x)")).toBe("https://a.example/(x");
+    expect(trimTrailingPunctuation("!!!")).toBe("");
+    // A long run of "!" that does not end the string: quadratic with the old `[...]+$` pattern.
+    const hostile = `https://a.example/${"!".repeat(200_000)}x`;
+    const started = performance.now();
+    expect(normaliseUrl(hostile)).toBe(`https://a.example/${"!".repeat(200_000)}x`);
+    expect(performance.now() - started).toBeLessThan(250);
   });
 });
