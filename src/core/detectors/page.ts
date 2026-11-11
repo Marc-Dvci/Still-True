@@ -10,6 +10,11 @@ const PRICE_PATTERN = new RegExp(
   "gi",
 );
 const UNAVAILABLE = new Set(["OutOfStock", "SoldOut", "Discontinued"]);
+const HUMAN: Record<string, string> = {
+  OutOfStock: "out of stock",
+  SoldOut: "sold out",
+  Discontinued: "discontinued",
+};
 const SOLD_OUT_WORDS =
   /\b(sold out|out of stock|back soon|epuise|rupture de stock|plus disponible|agotado)\b/;
 
@@ -120,8 +125,8 @@ export function pageFindings(post: PostUnderCheck, ctx: CheckContext): Finding[]
           code: "out_of_stock",
           verdict: "hold",
           title: "Product is out of stock",
-          detail: `${product.name ? `"${product.name}"` : "The linked product"} is marked ${product.availability} on the page.`,
-          evidence: [{ label: "Availability", value: product.availability }, from],
+          detail: `The page says ${product.name ? `"${product.name}"` : "the product"} is ${HUMAN[product.availability] ?? product.availability}.`,
+          evidence: [{ label: "Availability", value: `${product.availability} (schema.org)` }, from],
           spans: linkSpan,
         });
       }
@@ -170,8 +175,8 @@ export function pageFindings(post: PostUnderCheck, ctx: CheckContext): Finding[]
           code: cancelled ? "event_cancelled" : "event_postponed",
           verdict: "hold",
           title: cancelled ? "Event cancelled" : "Event postponed",
-          detail: `${event.name ? `"${event.name}"` : "The linked event"} is marked ${status} on the page.`,
-          evidence: [{ label: "Event status", value: status }, from],
+          detail: `The page says ${event.name ? `"${event.name}"` : "the event"} is ${cancelled ? "cancelled" : "postponed"}.`,
+          evidence: [{ label: "Event status", value: `${status} (schema.org)` }, from],
           spans: linkSpan,
         });
         continue;

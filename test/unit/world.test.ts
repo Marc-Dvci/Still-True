@@ -188,3 +188,14 @@ describe("remembrance days", () => {
     ).toEqual(["remembrance_day_tone"]);
   });
 });
+
+describe("wording helpers", () => {
+  it("names countries in plain English", async () => {
+    const { countryName, utcLabel } = await import("../../src/core/detectors/world");
+    expect(countryName("US")).toBe("the United States");
+    expect(countryName("FR")).toBe("France");
+    expect(countryName("not-a-code")).toBe("not-a-code");
+    expect(utcLabel("2025-01-07T00:00:00.000Z")).toBe("7 Jan 2025, 00:00 UTC");
+    expect(utcLabel("garbage")).toBe("garbage");
+  });
+});

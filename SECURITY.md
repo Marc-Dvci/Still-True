@@ -1,16 +1,13 @@
 # Security
 
 Please report a vulnerability through
-[GitHub's private reporting](https://github.com/{{OWNER}}/{{REPO}}/security/advisories/new), not in a public issue.
-The supported version is the `main` branch and the hosted [live demo]({{LIVE_URL}}).
+[GitHub's private reporting](https://github.com/Marc-Dvci/Still-True/security/advisories/new), not in a
+public issue. The supported version is the `main` branch and the
+[live deployment](https://still-true.chatisthisreal.workers.dev).
 
 The reports that matter most are anything that:
 
-<!-- TEMPLATE: list what the product promises; delete this file if there is no public endpoint, keys, money or
-personal data. -->
-- reads the server's API keys;
-- spends API credit past the live server's budget;
-- changes a stored result without the product noticing.
-
-To dispute what an output says, rather than how the software works,
-[report a correction](https://github.com/{{OWNER}}/{{REPO}}/issues/new?template=correction.yml).
+- reads or reuses another account's Buffer tokens, or a session cookie it did not receive;
+- makes Still True change a post in Buffer without the owner's settings or action;
+- makes the page fetcher reach an address it should not (it accepts public http and https hosts only);
+- changes an entry of an account's action log without the check noticing.

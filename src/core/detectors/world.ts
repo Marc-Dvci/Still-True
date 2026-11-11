@@ -23,6 +23,44 @@ const HAZARD_NAMES: Record<HazardType, string> = {
 
 const WINDOW_MS = 72 * 3_600_000;
 
+const regionNames = new Intl.DisplayNames(["en"], { type: "region" });
+
+/** "US" -> "the United States", "FR" -> "France". */
+export function countryName(code: string): string {
+  let name = code;
+  try {
+    name = regionNames.of(code) ?? code;
+  } catch {
+    return code;
+  }
+  return /^(United|Netherlands|Philippines|Czech|Dominican|Bahamas|Gambia|Maldives)/.test(name)
+    ? `the ${name}`
+    : name;
+}
+
+function article(word: string): string {
+  return /^[aeiou]/i.test(word) ? "an" : "a";
+}
+
+/** "2025-01-07T00:00:00.000Z" -> "7 Jan 2025, 00:00 UTC". */
+export function utcLabel(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const date = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "UTC",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(d);
+  const time = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "UTC",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(d);
+  return `${date}, ${time} UTC`;
+}
+
 function affects(event: DisasterEvent, country: string): boolean {
   return event.countries.includes(country);
 }
@@ -56,14 +94,14 @@ export function worldFindings(post: PostUnderCheck, ctx: CheckContext): Finding[
       code: "disaster_wording_collision",
       verdict: "hold",
       title: `Wording echoes an active ${HAZARD_NAMES[event.type]}`,
-      detail: `"${words[0]?.text}" while GDACS reports a ${event.alert} ${HAZARD_NAMES[event.type]} alert in ${ctx.country}: ${event.name}.`,
+      detail: `"${words[0]?.text}" while GDACS reports ${article(event.alert)} ${event.alert} ${HAZARD_NAMES[event.type]} alert for ${countryName(ctx.country)}.`,
       evidence: [
         {
           label: "Alert",
           value: `${event.alert} · ${event.name}`,
           source: event.url ?? "https://www.gdacs.org/",
         },
-        { label: "Started", value: event.from },
+        { label: "Started", value: utcLabel(event.from) },
       ],
       spans: words.map((w) => [w.start, w.end] as [number, number]),
     });
@@ -77,10 +115,10 @@ export function worldFindings(post: PostUnderCheck, ctx: CheckContext): Finding[
         code: "disaster_promo_window",
         verdict: "review",
         title: `Promotion during a ${HAZARD_NAMES[red.type]}`,
-        detail: `GDACS reports a red ${HAZARD_NAMES[red.type]} alert in ${ctx.country}: ${red.name}.`,
+        detail: `GDACS reports a red ${HAZARD_NAMES[red.type]} alert for ${countryName(ctx.country)}.`,
         evidence: [
           { label: "Alert", value: `red · ${red.name}`, source: red.url ?? "https://www.gdacs.org/" },
-          { label: "Started", value: red.from },
+          { label: "Started", value: utcLabel(red.from) },
         ],
         spans: [],
       });
@@ -105,7 +143,7 @@ export function worldFindings(post: PostUnderCheck, ctx: CheckContext): Finding[
           item.category === "attacks"
             ? "Promotion on a day of an attack"
             : "Promotion on a day of a disaster",
-        detail: `Wikipedia's Current Events for ${formatLocalDate(item.date)}: ${item.headline}`,
+        detail: `Wikipedia's Current Events for ${formatLocalDate(item.date)} lists ${item.category === "attacks" ? "an attack" : "a disaster"} in ${countryName(ctx.country)}.`,
         evidence: [
           {
             label: "News",

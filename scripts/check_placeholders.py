@@ -14,7 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PATTERN = re.compile(r"\{\{[A-Z_]+\}\}|TEMPLATE:")
-SKIP = {"scripts/check_placeholders.py", "scripts/init_project.py", "TEMPLATE.md"}
+SKIP = {"scripts/check_placeholders.py", "scripts/check_links.py", "scripts/init_project.py", "TEMPLATE.md"}
 
 
 def tracked_files() -> list[str]:

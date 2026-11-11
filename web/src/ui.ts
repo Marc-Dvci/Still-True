@@ -119,21 +119,21 @@ export function localTime(iso: string | null, timeZone: string): { time: string;
   return { time, day };
 }
 
-export function highlighted(text: string, findings: Finding[]): HTMLElement {
+/** Appends the post text to `target`, with the spans the findings are about marked. */
+export function highlightInto(target: HTMLElement, text: string, findings: Finding[]): HTMLElement {
   const spans = findings
     .flatMap((f) => f.spans.map(([s, e]) => ({ s, e, hold: f.verdict === "hold" })))
     .filter((x) => x.e > x.s)
     .sort((a, b) => a.s - b.s);
-  const p = el("p", { class: "post-text" });
   let cursor = 0;
   for (const span of spans) {
     if (span.s < cursor) continue;
-    p.append(text.slice(cursor, span.s));
-    p.append(el("mark", { class: span.hold ? "hold" : "" }, text.slice(span.s, span.e)));
+    target.append(text.slice(cursor, span.s));
+    target.append(el("mark", { class: span.hold ? "hold" : "" }, text.slice(span.s, span.e)));
     cursor = span.e;
   }
-  p.append(text.slice(cursor));
-  return p;
+  target.append(text.slice(cursor));
+  return target;
 }
 
 /** A word-level diff between the post and the fixed text. */
@@ -217,7 +217,7 @@ export function renderRow(row: RowModel, actions: RowActions = {}, open = false)
       row.channel?.name ?? "Channel",
       el("small", {}, row.channel?.service ?? ""),
     ),
-    el("span", { class: "text" }, row.text),
+    highlightInto(el("span", { class: "text" }), row.text, row.findings),
     el(
       "span",
       { class: "status" },
@@ -234,7 +234,6 @@ export function renderRow(row: RowModel, actions: RowActions = {}, open = false)
   li.append(summary);
 
   const detail = el("div", { class: "detail", id: `detail-${row.id}` });
-  detail.append(highlighted(row.text, row.findings));
   if (row.findings.length === 0) {
     detail.append(
       el(

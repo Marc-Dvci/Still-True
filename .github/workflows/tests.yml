@@ -74,7 +74,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install codespell==2.4.1
-      - run: codespell --skip "*.jsonl,*.json,*.graphql,package-lock.json,./test/fixtures,./web/public/fonts,./data" --ignore-words-list "te,ue,oder,nd,ser,lien,juin,mot,deque,soleil,tempete,vague"
+      - run: codespell --skip "*.jsonl,*.json,*.graphql,package-lock.json,./test/fixtures,./web/public/fonts,./data,./docs/screens" --ignore-words-list "te,ue,oder,nd,ser,lien,juin,mot,deque,soleil,tempete,vague,thur,ist,ment,brunch,caf"
       - run: python scripts/check_links.py
       - run: python scripts/check_placeholders.py
   docker:

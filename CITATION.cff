@@ -1,16 +1,24 @@
 cff-version: 1.2.0
-message: "If you use {{NAME}} or its evaluation, please cite it as below."
+message: "If you use Still True or its evaluation, please cite it as below."
 type: software
-title: "{{NAME}}: {{TAGLINE}}"
+title: "Still True: re-checks every scheduled Buffer post against the world just before it goes out"
 abstract: >-
-  {{ABSTRACT}}
+  Still True reads a Buffer queue again just before each post goes out and checks it against the
+  calendar, the linked product and event pages, the weather forecast, national remembrance days, GDACS
+  disaster alerts and Wikipedia's Current Events. Deterministic rules decide; posts the world has made
+  wrong are moved to drafts and explained inside Buffer. Evaluated on 410 labelled cases written before
+  the code and on five real days.
 authors:
   - family-names: Donovici
     given-names: Marc
 version: 1.0.0
-date-released: "{{RELEASE_DATE}}"
+date-released: "2026-11-13"
 license: MIT
-repository-code: "https://github.com/{{OWNER}}/{{REPO}}"
-url: "{{DEMO_URL}}"
+repository-code: "https://github.com/Marc-Dvci/Still-True"
+url: "https://still-true.chatisthisreal.workers.dev"
 keywords:
-  - "{{KEYWORD}}"
+  - Buffer
+  - social media scheduling
+  - Cloudflare Workers
+  - GDACS
+  - schema.org
