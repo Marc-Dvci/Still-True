@@ -1,0 +1,748 @@
+{
+  "version": "2026-11-11",
+  "entries": [
+    {
+      "id": "fr-2015-11-13-paris-attacks",
+      "countries": [
+        "FR"
+      ],
+      "scope": "country",
+      "name": "Anniversary of the 13 November 2015 Paris attacks",
+      "localName": "Hommage aux victimes des attentats du 13 novembre 2015",
+      "rule": {
+        "type": "fixed",
+        "month": 11,
+        "day": 13
+      },
+      "dates": [
+        "2025-11-13",
+        "2026-11-13",
+        "2027-11-13"
+      ],
+      "severity": "high",
+      "kind": "remembrance_or_mourning",
+      "since": 2016,
+      "source": "https://www.elysee.fr/emmanuel-macron/2025/11/13/commemoration-des-10-ans-des-attentats-du-13-novembre-2015",
+      "note": "Each year Paris holds ceremonies at the six attack sites with a moment of recueillement alongside families and victims' associations; the 2025 10th anniversary was attended by the President."
+    },
+    {
+      "id": "fr-03-11-terrorism-victims-day",
+      "countries": [
+        "FR"
+      ],
+      "scope": "country",
+      "name": "National day of tribute to victims of terrorism",
+      "localName": "Journée nationale d'hommage aux victimes du terrorisme",
+      "rule": {
+        "type": "fixed",
+        "month": 3,
+        "day": 11
+      },
+      "dates": [
+        "2025-03-11",
+        "2026-03-11",
+        "2027-03-11"
+      ],
+      "severity": "high",
+      "kind": "remembrance_or_mourning",
+      "since": 2020,
+      "source": "https://www.elysee.fr/emmanuel-macron/2021/03/11/11-mars-journee-nationale-dhommage-aux-victimes-du-terrorisme",
+      "note": "National day of tribute to victims of terrorism in France and French victims abroad, set by decree no. 2019-1148; a national ceremony is held each year (2021 edition at Les Invalides)."
+    },
+    {
+      "id": "fr-11-11-armistice",
+      "countries": [
+        "FR"
+      ],
+      "scope": "country",
+      "name": "Armistice Day (11 November)",
+      "localName": "Armistice du 11 novembre 1918",
+      "rule": {
+        "type": "fixed",
+        "month": 11,
+        "day": 11
+      },
+      "dates": [
+        "2025-11-11",
+        "2026-11-11",
+        "2027-11-11"
+      ],
+      "severity": "moderate",
+      "kind": "national_holiday_remembrance",
+      "since": 1922,
+      "source": "https://www.service-public.gouv.fr/particuliers/actualites/A16107",
+      "note": "Public holiday under the law of 24 October 1922; commemorations at war memorials each year. Moderate because it is a public holiday on which sales are common."
+    },
+    {
+      "id": "us-09-11-patriot-day",
+      "countries": [
+        "US"
+      ],
+      "scope": "country",
+      "name": "Patriot Day (11 September)",
+      "localName": "Patriot Day",
+      "rule": {
+        "type": "fixed",
+        "month": 9,
+        "day": 11
+      },
+      "dates": [
+        "2025-09-11",
+        "2026-09-11",
+        "2027-09-11"
+      ],
+      "severity": "high",
+      "kind": "remembrance_or_mourning",
+      "since": 2001,
+      "source": "https://www.govinfo.gov/features/patriot-day",
+      "note": "Designated by Public Law 107-89 (signed 18 December 2001) as the day of remembrance for the 11 September 2001 attacks."
+    },
+    {
+      "id": "us-12-07-pearl-harbor",
+      "countries": [
+        "US"
+      ],
+      "scope": "country",
+      "name": "National Pearl Harbor Remembrance Day",
+      "localName": "National Pearl Harbor Remembrance Day",
+      "rule": {
+        "type": "fixed",
+        "month": 12,
+        "day": 7
+      },
+      "dates": [
+        "2025-12-07",
+        "2026-12-07",
+        "2027-12-07"
+      ],
+      "severity": "high",
+      "kind": "remembrance_or_mourning",
+      "since": 1994,
+      "source": "https://en.wikipedia.org/wiki/Pearl_Harbor_Day",
+      "note": "Designated by Public Law 103-308 (1994) and codified at 36 U.S.C. § 129; first observed 7 December 1994 under a presidential proclamation."
+    },
+    {
+      "id": "us-memorial-day",
+      "countries": [
+        "US"
+      ],
+      "scope": "country",
+      "name": "Memorial Day (last Monday in May)",
+      "localName": "Memorial Day",
+      "rule": {
+        "type": "nth_weekday",
+        "month": 5,
+        "weekday": 1,
+        "n": -1
+      },
+      "dates": [
+        "2025-05-26",
+        "2026-05-25",
+        "2027-05-31"
+      ],
+      "severity": "moderate",
+      "kind": "national_holiday_remembrance",
+      "since": null,
+      "source": "https://www.opm.gov/frequently-asked-questions/pay-and-leave-faq/pay-administration/what-are-federal-holidays/",
+      "note": "Federal holiday on the last Monday in May (OPM). Moderate because it is a federal holiday on which sales are common; it honours the US military dead."
+    },
+    {
+      "id": "gb-remembrance-sunday",
+      "countries": [
+        "GB"
+      ],
+      "scope": "country",
+      "name": "Remembrance Sunday (second Sunday in November)",
+      "localName": "Remembrance Sunday",
+      "rule": {
+        "type": "nth_weekday",
+        "month": 11,
+        "weekday": 7,
+        "n": 2
+      },
+      "dates": [
+        "2025-11-09",
+        "2026-11-08",
+        "2027-11-14"
+      ],
+      "severity": "high",
+      "kind": "remembrance_or_mourning",
+      "since": null,
+      "source": "https://www.gov.uk/government/news/his-majesty-the-king-to-unite-nation-in-annual-two-minute-silence-to-remember-fallen-heroes",
+      "note": "Two-minute silence at 11:00; the King leads the nation in the annual Remembrance Sunday service, alongside the Prime Minister (gov.uk)."
+    },
+    {
+      "id": "gb-11-11-armistice-day",
+      "countries": [
+        "GB"
+      ],
+      "scope": "country",
+      "name": "Armistice Day (11 November)",
+      "localName": "Armistice Day",
+      "rule": {
+        "type": "fixed",
+        "month": 11,
+        "day": 11
+      },
+      "dates": [
+        "2025-11-11",
+        "2026-11-11",
+        "2027-11-11"
+      ],
+      "severity": "high",
+      "kind": "remembrance_or_mourning",
+      "since": 1919,
+      "source": "https://en.wikipedia.org/wiki/Remembrance_Sunday",
+      "note": "Two-minute silence at 11:00 on 11 November, the time the 1918 armistice took effect; the first official events were held on 11 November 1919 at Buckingham Palace (Wikipedia)."
+    },
+    {
+      "id": "ca-11-11-remembrance-day",
+      "countries": [
+        "CA"
+      ],
+      "scope": "country",
+      "name": "Remembrance Day (11 November)",
+      "localName": "Jour du Souvenir",
+      "rule": {
+        "type": "fixed",
+        "month": 11,
+        "day": 11
+      },
+      "dates": [
+        "2025-11-11",
+        "2026-11-11",
+        "2027-11-11"
+      ],
+      "severity": "moderate",
+      "kind": "national_holiday_remembrance",
+      "since": null,
+      "source": "https://laws-lois.justice.gc.ca/eng/acts/H-5/FullText.html",
+      "note": "Legal holiday throughout Canada under the name Remembrance Day (Holidays Act, s. 3). Moderate because it is a legal holiday, as with 11 November in France."
+    },
+    {
+      "id": "ca-09-30-truth-reconciliation",
+      "countries": [
+        "CA"
+      ],
+      "scope": "country",
+      "name": "National Day for Truth and Reconciliation (30 September)",
+      "localName": "Journée nationale de la vérité et de la réconciliation",
+      "rule": {
+        "type": "fixed",
+        "month": 9,
+        "day": 30
+      },
+      "dates": [
+        "2025-09-30",
+        "2026-09-30",
+        "2027-09-30"
+      ],
+      "severity": "high",
+      "kind": "remembrance_or_mourning",
+      "since": 2021,
+      "source": "https://www.canada.ca/en/department-national-defence/maple-leaf/defence/2021/07/federal-statutory-holiday-national-day-for-truth-and-reconciliation.html",
+      "note": "Federal statutory holiday from September 2021 to commemorate the legacy of residential schools. Kept at high, although it is a holiday, because it commemorates a tragedy and its victims."
+    },
+    {
+      "id": "ca-06-23-terrorism-victims",
+      "countries": [
+        "CA"
+      ],
+      "scope": "country",
+      "name": "National Day of Remembrance for Victims of Terrorism (23 June)",
+      "localName": "National Day of Remembrance for Victims of Terrorism",
+      "rule": {
+        "type": "fixed",
+        "month": 6,
+        "day": 23
+      },
+      "dates": [
+        "2025-06-23",
+        "2026-06-23",
+        "2027-06-23"
+      ],
+      "severity": "high",
+      "kind": "remembrance_or_mourning",
+      "since": 2005,
+      "source": "https://laws-lois.justice.gc.ca/eng/regulations/SI-2005-65/FullText.html",
+      "note": "Fixed by proclamation SI/2005-65 at 23 June each year as the National Day of Remembrance for Victims of Terrorism."
+    },
+    {
+      "id": "au-04-25-anzac-day",
+      "countries": [
+        "AU"
+      ],
+      "scope": "country",
+      "name": "Anzac Day (25 April)",
+      "localName": "Anzac Day",
+      "rule": {
+        "type": "fixed",
+        "month": 4,
+        "day": 25
+      },
+      "dates": [
+        "2025-04-25",
+        "2026-04-25",
+        "2027-04-25"
+      ],
+      "severity": "moderate",
+      "kind": "national_holiday_remembrance",
+      "since": 1916,
+      "source": "https://en.wikipedia.org/wiki/ANZAC_Day",
+      "note": "Public holiday in the Australian states (all observing a holiday together by 1927, per Wikipedia); dawn services and commemorations for the war dead. Moderate as a public holiday."
+    },
+    {
+      "id": "nz-04-25-anzac-day",
+      "countries": [
+        "NZ"
+      ],
+      "scope": "country",
+      "name": "Anzac Day (25 April)",
+      "localName": "Anzac Day",
+      "rule": {
+        "type": "fixed",
+        "month": 4,
+        "day": 25
+      },
+      "dates": [
+        "2025-04-25",
+        "2026-04-25",
+        "2027-04-25"
+      ],
+      "severity": "moderate",
+      "kind": "national_holiday_remembrance",
+      "since": 1916,
+      "source": "https://en.wikipedia.org/wiki/ANZAC_Day",
+      "note": "Public holiday in New Zealand under the Anzac Day Act 1920 (per Wikipedia); commemorations for the war dead. Moderate as a public holiday."
+    },
+    {
+      "id": "de-volkstrauertag",
+      "countries": [
+        "DE"
+      ],
+      "scope": "country",
+      "name": "Volkstrauertag (National Day of Mourning)",
+      "localName": "Volkstrauertag",
+      "rule": {
+        "type": "relative_to_advent",
+        "sundaysBeforeFirstAdvent": 2
+      },
+      "dates": [
+        "2025-11-16",
+        "2026-11-15",
+        "2027-11-14"
+      ],
+      "severity": "high",
+      "kind": "remembrance_or_mourning",
+      "since": null,
+      "source": "https://www.bundeswehr.de/de/selbstverstaendnis/gedenken-tote-bundeswehr/volkstrauertag",
+      "note": "National day of mourning for the war dead, held two Sundays before the first Sunday of Advent (the Sunday nearest 16 November)."
+    },
+    {
+      "id": "de-11-09-pogromnacht",
+      "countries": [
+        "DE"
+      ],
+      "scope": "country",
+      "name": "Remembrance of the 9 November 1938 pogroms (Reichspogromnacht)",
+      "localName": "Gedenken an die Pogromnacht vom 9. November 1938",
+      "rule": {
+        "type": "fixed",
+        "month": 11,
+        "day": 9
+      },
+      "dates": [
+        "2025-11-09",
+        "2026-11-09",
+        "2027-11-09"
+      ],
+      "severity": "high",
+      "kind": "remembrance_or_mourning",
+      "since": null,
+      "source": "https://www.bundesregierung.de/breg-de/aktuelles/9-november-gedenken-2141676",
+      "note": "The federal government holds commemorations on the anniversary of the 9-10 November 1938 pogroms; there is no legal designation or public holiday, and the page does not describe the event as annual."
+    },
+    {
+      "id": "de-01-27-day-of-remembrance",
+      "countries": [
+        "DE"
+      ],
+      "scope": "country",
+      "name": "Day of Remembrance for the Victims of National Socialism (27 January)",
+      "localName": "Tag des Gedenkens an die Opfer des Nationalsozialismus",
+      "rule": {
+        "type": "fixed",
+        "month": 1,
+        "day": 27
+      },
+      "dates": [
+        "2025-01-27",
+        "2026-01-27",
+        "2027-01-27"
+      ],
+      "severity": "high",
+      "kind": "remembrance_or_mourning",
+      "since": 1996,
+      "source": "https://www.bundesregierung.de/breg-de/service/bulletin/27-januar-tag-des-gedenkens-fuer-die-opfer-des-nationalsozialismus-proklamation-des-bundespraesidenten-805822",
+      "note": "Proclaimed by Federal President Roman Herzog on 3 January 1996 as the day of remembrance for the victims of National Socialism."
+    },
+    {
+      "id": "intl-01-27-holocaust-remembrance",
+      "countries": [],
+      "scope": "international",
+      "name": "International Day of Commemoration in memory of the victims of the Holocaust (27 January)",
+      "localName": "International Day of Commemoration in memory of the victims of the Holocaust",
+      "rule": {
+        "type": "fixed",
+        "month": 1,
+        "day": 27
+      },
+      "dates": [
+        "2025-01-27",
+        "2026-01-27",
+        "2027-01-27"
+      ],
+      "severity": "high",
+      "kind": "remembrance_or_mourning",
+      "since": 2006,
+      "source": "https://www.un.org/en/node/61977",
+      "note": "UN General Assembly Resolution 60/7 (2005) designates 27 January as an annual day of commemoration. Scope is international: the app should apply it to every audience."
+    },
+    {
+      "id": "es-03-11-european-victims-day",
+      "countries": [
+        "ES"
+      ],
+      "scope": "country",
+      "name": "European Day of Remembrance for Victims of Terrorism (11 March)",
+      "localName": "Día europeo de las víctimas del terrorismo",
+      "rule": {
+        "type": "fixed",
+        "month": 3,
+        "day": 11
+      },
+      "dates": [
+        "2025-03-11",
+        "2026-03-11",
+        "2027-03-11"
+      ],
+      "severity": "high",
+      "kind": "remembrance_or_mourning",
+      "since": 2011,
+      "source": "https://www.boe.es/buscar/act.php?id=BOE-A-2011-15039",
+      "note": "Article 60 of Ley 29/2011 provides that 11 March each year is the European day for the victims of terrorism; the date is also the anniversary of the 2004 Madrid train bombings."
+    },
+    {
+      "id": "es-06-27-victims-of-terrorism-day",
+      "countries": [
+        "ES"
+      ],
+      "scope": "country",
+      "name": "Day of Remembrance and Homage to the Victims of Terrorism (27 June)",
+      "localName": "Día de recuerdo y homenaje a las víctimas del terrorismo",
+      "rule": {
+        "type": "fixed",
+        "month": 6,
+        "day": 27
+      },
+      "dates": [
+        "2025-06-27",
+        "2026-06-27",
+        "2027-06-27"
+      ],
+      "severity": "high",
+      "kind": "remembrance_or_mourning",
+      "since": 2011,
+      "source": "https://www.boe.es/buscar/act.php?id=BOE-A-2011-15039",
+      "note": "Article 60 of Ley 29/2011 declares 27 June each year a day of remembrance and homage to the victims of terrorism; public institutions should promote recognition events."
+    },
+    {
+      "id": "no-07-22-attacks",
+      "countries": [
+        "NO"
+      ],
+      "scope": "country",
+      "name": "Anniversary of the 22 July 2011 attacks",
+      "localName": "22. juli",
+      "rule": {
+        "type": "fixed",
+        "month": 7,
+        "day": 22
+      },
+      "dates": [
+        "2025-07-22",
+        "2026-07-22",
+        "2027-07-22"
+      ],
+      "severity": "high",
+      "kind": "remembrance_or_mourning",
+      "since": 2012,
+      "source": "https://www.norway.no/en/india/norway-india/news-and-events/newsnde/this-year-we-mark-that-10-years-have-passed-since-the-terrorist-attacks-on-the-government-offices-and-utoya/",
+      "note": "National memorial events on 22 July in Oslo and on Utøya; the 10th anniversary (2021) had national memorial events in both places (norway.no)."
+    },
+    {
+      "id": "be-11-11-armistice",
+      "countries": [
+        "BE"
+      ],
+      "scope": "country",
+      "name": "Armistice Day (11 November)",
+      "localName": "Wapenstilstand / Jour de l'Armistice",
+      "rule": {
+        "type": "fixed",
+        "month": 11,
+        "day": 11
+      },
+      "dates": [
+        "2025-11-11",
+        "2026-11-11",
+        "2027-11-11"
+      ],
+      "severity": "moderate",
+      "kind": "national_holiday_remembrance",
+      "since": null,
+      "source": "https://en.wikipedia.org/wiki/Public_holidays_in_Belgium",
+      "note": "Official public holiday in Belgium (Armistice Day, 11 November) on the list of public holidays. Moderate as a public holiday."
+    },
+    {
+      "id": "nl-05-04-national-commemoration",
+      "countries": [
+        "NL"
+      ],
+      "scope": "country",
+      "name": "National Commemoration of the Dead (4 May)",
+      "localName": "Nationale Herdenking op 4 mei",
+      "rule": {
+        "type": "fixed",
+        "month": 5,
+        "day": 4
+      },
+      "dates": [
+        "2025-05-04",
+        "2026-05-04",
+        "2027-05-04"
+      ],
+      "severity": "high",
+      "kind": "remembrance_or_mourning",
+      "since": null,
+      "source": "https://www.4en5mei.nl/",
+      "note": "National commemoration of all victims of the Second World War and later wars and peacekeeping operations; the nation observes two minutes' silence at 20:00 (NOS coverage)."
+    },
+    {
+      "id": "it-01-27-giorno-della-memoria",
+      "countries": [
+        "IT"
+      ],
+      "scope": "country",
+      "name": "Giorno della Memoria (27 January)",
+      "localName": "Giorno della Memoria",
+      "rule": {
+        "type": "fixed",
+        "month": 1,
+        "day": 27
+      },
+      "dates": [
+        "2025-01-27",
+        "2026-01-27",
+        "2027-01-27"
+      ],
+      "severity": "high",
+      "kind": "remembrance_or_mourning",
+      "since": 2000,
+      "source": "https://www.normattiva.it/eli/id/2000/07/31/000G0268/CONSOLIDATED",
+      "note": "Law 211 of 20 July 2000, art. 1: 27 January, the date the gates of Auschwitz were broken down, is the Giorno della Memoria for the Shoah and the persecution of Italian Jews and deportees."
+    },
+    {
+      "id": "it-02-10-giorno-del-ricordo",
+      "countries": [
+        "IT"
+      ],
+      "scope": "country",
+      "name": "Giorno del Ricordo (10 February)",
+      "localName": "Giorno del Ricordo",
+      "rule": {
+        "type": "fixed",
+        "month": 2,
+        "day": 10
+      },
+      "dates": [
+        "2025-02-10",
+        "2026-02-10",
+        "2027-02-10"
+      ],
+      "severity": "high",
+      "kind": "remembrance_or_mourning",
+      "since": 2004,
+      "source": "https://www.normattiva.it/eli/id/2004/04/13/004G0110/CONSOLIDATED/20240312",
+      "note": "Law 92 of 30 March 2004, art. 1: the Republic recognises 10 February as the Giorno del ricordo to preserve and renew the memory of the foibe and related events."
+    },
+    {
+      "id": "ie-national-day-of-commemoration",
+      "countries": [
+        "IE"
+      ],
+      "scope": "country",
+      "name": "National Day of Commemoration (Sunday nearest 11 July)",
+      "localName": "National Day of Commemoration",
+      "rule": {
+        "type": "nearest_weekday",
+        "month": 7,
+        "day": 11,
+        "weekday": 7
+      },
+      "dates": [
+        "2025-07-13",
+        "2026-07-12",
+        "2027-07-11"
+      ],
+      "severity": "high",
+      "kind": "remembrance_or_mourning",
+      "since": 1986,
+      "source": "https://military.ie/en/public-information/defence-forces-ceremonial/national-day-of-commemoration",
+      "note": "State ceremony on the Sunday nearest 11 July, commemorating Irish people who died in past wars or on UN peacekeeping service; first held 13 July 1986 (Wikipedia)."
+    },
+    {
+      "id": "jp-03-11-great-east-japan-earthquake",
+      "countries": [
+        "JP"
+      ],
+      "scope": "country",
+      "name": "Great East Japan Earthquake memorial (11 March)",
+      "localName": "Memorial Ceremony for the Great East Japan Earthquake",
+      "rule": {
+        "type": "fixed",
+        "month": 3,
+        "day": 11
+      },
+      "dates": [
+        "2025-03-11",
+        "2026-03-11",
+        "2027-03-11"
+      ],
+      "severity": "high",
+      "kind": "remembrance_or_mourning",
+      "since": null,
+      "source": "https://japan.kantei.go.jp/105/statement/202603/11tsuitou.html",
+      "note": "Government memorial ceremony in Tokyo for the 2011 earthquake and tsunami, where the Prime Minister gives the government's address (2026, 15th anniversary, per the Kantei)."
+    },
+    {
+      "id": "jp-08-06-hiroshima",
+      "countries": [
+        "JP"
+      ],
+      "scope": "country",
+      "name": "Hiroshima Peace Memorial Ceremony (6 August)",
+      "localName": "Hiroshima Peace Memorial Ceremony",
+      "rule": {
+        "type": "fixed",
+        "month": 8,
+        "day": 6
+      },
+      "dates": [
+        "2025-08-06",
+        "2026-08-06",
+        "2027-08-06"
+      ],
+      "severity": "high",
+      "kind": "remembrance_or_mourning",
+      "since": null,
+      "source": "https://www.city.hiroshima.lg.jp/site/english/115509.html",
+      "note": "Held every year by the City of Hiroshima at Peace Memorial Park, 8:00 to 8:50 a.m. on 6 August."
+    },
+    {
+      "id": "jp-08-09-nagasaki",
+      "countries": [
+        "JP"
+      ],
+      "scope": "country",
+      "name": "Nagasaki Peace Memorial Ceremony (9 August)",
+      "localName": "Nagasaki Peace Memorial Ceremony",
+      "rule": {
+        "type": "fixed",
+        "month": 8,
+        "day": 9
+      },
+      "dates": [
+        "2025-08-09",
+        "2026-08-09",
+        "2027-08-09"
+      ],
+      "severity": "high",
+      "kind": "remembrance_or_mourning",
+      "since": null,
+      "source": "https://japan.kantei.go.jp/105/actions/202608/09nagasaki.html",
+      "note": "Held at Peace Park in Nagasaki City, with a one-minute silence at 11:02 a.m., the time of the bombing; the Prime Minister attended in 2026 (Kantei)."
+    },
+    {
+      "id": "in-01-30-martyrs-day",
+      "countries": [
+        "IN"
+      ],
+      "scope": "country",
+      "name": "Martyrs' Day (30 January)",
+      "localName": "Martyrs' Day (Shaheed Diwas)",
+      "rule": {
+        "type": "fixed",
+        "month": 1,
+        "day": 30
+      },
+      "dates": [
+        "2025-01-30",
+        "2026-01-30",
+        "2027-01-30"
+      ],
+      "severity": "high",
+      "kind": "remembrance_or_mourning",
+      "since": null,
+      "source": "https://en.wikipedia.org/wiki/Martyrs%27_Day_(India)",
+      "note": "Two-minute silence at 11:00 across India in memory of the martyrs; the date marks the 1948 assassination of Mahatma Gandhi (Wikipedia)."
+    },
+    {
+      "id": "za-03-21-human-rights-day",
+      "countries": [
+        "ZA"
+      ],
+      "scope": "country",
+      "name": "Human Rights Day (21 March)",
+      "localName": "Human Rights Day",
+      "rule": {
+        "type": "fixed",
+        "month": 3,
+        "day": 21
+      },
+      "dates": [
+        "2025-03-21",
+        "2026-03-21",
+        "2027-03-21"
+      ],
+      "severity": "moderate",
+      "kind": "national_holiday_remembrance",
+      "since": null,
+      "source": "https://www.gov.za/human-rights-day",
+      "note": "Commemorates the 1960 Sharpeville massacre; a public holiday on the official calendar (gov.za). Moderate as a public holiday."
+    },
+    {
+      "id": "br-10-17-femicide-mourning-day",
+      "countries": [
+        "BR"
+      ],
+      "scope": "country",
+      "name": "National Day of Mourning and Memory for Women Victims of Femicide (17 October)",
+      "localName": "Dia Nacional de Luto e de Memória às Mulheres Vítimas de Feminicídio",
+      "rule": {
+        "type": "fixed",
+        "month": 10,
+        "day": 17
+      },
+      "dates": [
+        "2026-10-17",
+        "2027-10-17"
+      ],
+      "severity": "high",
+      "kind": "remembrance_or_mourning",
+      "since": 2026,
+      "source": "https://www2.camara.leg.br/legin/fed/lei/2026/lei-15334-8-janeiro-2026-798640-publicacaooriginal-177738-pl.html",
+      "note": "Created by Law 15.334 of 8 January 2026 (art. 1) as a day of mourning and memory for women victims of femicide; it took effect on publication, so the dates start in 2026."
+    }
+  ]
+}
