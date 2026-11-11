@@ -6,7 +6,7 @@
   <a href="https://github.com/Marc-Dvci/Still-True/actions/workflows/tests.yml"><img alt="tests" src="https://github.com/Marc-Dvci/Still-True/actions/workflows/tests.yml/badge.svg"></a>
   <a href="https://github.com/Marc-Dvci/Still-True/actions/workflows/live.yml"><img alt="live" src="https://github.com/Marc-Dvci/Still-True/actions/workflows/live.yml/badge.svg"></a>
   <a href="https://github.com/Marc-Dvci/Still-True/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://github.com/Marc-Dvci/Still-True/actions/workflows/codeql.yml/badge.svg"></a>
-  <img alt="tests" src="https://img.shields.io/badge/tests-218_passing-111111">
+  <img alt="tests" src="https://img.shields.io/badge/tests-225_passing-111111">
   <img alt="decision core coverage" src="https://img.shields.io/badge/decision_core-99.4%25_lines_·_85.0%25_branches-111111">
   <a href="LICENSE"><img alt="MIT licence" src="https://img.shields.io/badge/licence-MIT-111111"></a>
 </p>
@@ -29,7 +29,7 @@
 | Criterion | Where to look |
 |---|---|
 | **Real usefulness** | The problem in [one paragraph](#the-problem); the five checks and the [fire drill](https://still-true.chatisthisreal.workers.dev/drill) on real days; holds that never delete and are explained inside Buffer ([`src/durable/org.ts`](src/durable/org.ts)) |
-| **Execution and craft on the Buffer API** | [How it uses Buffer](#how-it-uses-buffer): 13 GraphQL operations, each [validated against Buffer's introspected schema](test/unit/operations.test.ts) in CI; PKCE with rotating refresh tokens owned by one Durable Object; [request budget](docs/BUFFER_API.md#request-budget); the [Worker tests](test/worker/org.test.ts) that hold, note, tag, release and fix through a recorded Buffer stand-in |
+| **Execution and craft on the Buffer API** | [How it uses Buffer](#how-it-uses-buffer): 13 GraphQL operations, each [validated against Buffer's introspected schema](test/unit/operations.test.ts) in CI; the [live check](docs/LIVE.md) on a real channel; PKCE with rotating refresh tokens owned by one Durable Object; [request budget](docs/BUFFER_API.md#request-budget); the [Worker tests](test/worker/org.test.ts) that hold, note, tag, release and fix through a recorded Buffer stand-in |
 | **Creativity and originality** | A queue that reads the world before it speaks: weather, remembrance days, disaster alerts and the linked page, checked at the moment of publishing. The [fire drill](#the-fire-drill) replays your own queue on a real day the world changed |
 
 ## See it work
@@ -112,10 +112,11 @@ Every operation is validated against [`schema/buffer.graphql`](schema/buffer.gra
 | Measure | Result | Reproduce |
 |---|---|---|
 | Labelled cases, written and committed before the detectors | 267 development cases, 143 held-out cases (191 healthy in total): every verdict and every finding code matches the written rules; 0 healthy posts held or flagged | `npm run eval` and `npm run eval -- heldout` · [`docs/EVALUATION.md`](docs/EVALUATION.md) |
+| Live Buffer API | On a real Mastodon channel: a scheduled post linking an out-of-stock product was moved to drafts with the "Still True: held" tag and a note inside Buffer in 1.4 s, released at its exact original time, and a wrong weekday fixed in Buffer; Buffer's responses recorded as fixtures | `BUFFER_API_KEY=... npx tsx scripts/live_check.ts <channel>` · [`docs/LIVE.md`](docs/LIVE.md) |
 | Real markup | Prices, stock and event status read correctly from Shopify, WooCommerce, Wix and ticketing-site markup, including a malformed JSON-LD block and an event postponed only in its title | [`test/unit/page.test.ts`](test/unit/page.test.ts) |
 | Real days | The five drills above, on the recorded GDACS, Wikipedia and Open-Meteo data | [`test/unit/drill.test.ts`](test/unit/drill.test.ts) |
 | Buffer contract | 13 operations valid against the introspected schema | [`test/unit/operations.test.ts`](test/unit/operations.test.ts) |
-| Tests | 165 unit · 41 Worker and Durable Object tests in workerd · 12 browser tests with axe-core (WCAG 2.2 AA, desktop and mobile). Decision core coverage: 99.4 % of lines, 85.0 % of branches | `npm test`, `npm run test:unit`, `npm run test:e2e` |
+| Tests | 169 unit · 44 Worker and Durable Object tests in workerd · 12 browser tests with axe-core (WCAG 2.2 AA, desktop and mobile). Decision core coverage: 99.4 % of lines, 85.0 % of branches | `npm test`, `npm run test:unit`, `npm run test:e2e` |
 
 > [!IMPORTANT]
 > What is real: the disaster alerts, news items and weather in the fire drill are the records GDACS, Wikipedia and Open-Meteo published for those days, and the page fixtures reproduce the markup of real Shopify, WooCommerce, Wix and ticketing pages. Atelier Nord and Salle Rivage are the demo shop and venue Still True serves itself, so the sample drafts have pages to link to.
@@ -124,7 +125,9 @@ Every operation is validated against [`schema/buffer.graphql`](schema/buffer.gra
 
 | Claim | Test |
 |---|---|
-| A certain problem moves the post to drafts, adds a note and the held tag, and leaves healthy posts untouched | [`test/worker/org.test.ts`](test/worker/org.test.ts) "holds an out-of-stock post, explains it in Buffer, and leaves a healthy post alone" |
+| A certain problem moves the post to drafts, adds a note and the held tag, and leaves healthy posts untouched | [`test/worker/org.test.ts`](test/worker/org.test.ts) "holds an out-of-stock post, explains it in Buffer, and leaves a healthy post alone"; live on Buffer in [`docs/LIVE.md`](docs/LIVE.md), recorded in [`test/unit/buffer-recorded.test.ts`](test/unit/buffer-recorded.test.ts) |
+| Every edit sends the post's text, which Buffer requires | [`test/worker/org.test.ts`](test/worker/org.test.ts) "sends the post's text with every edit, as Buffer requires" |
+| The note never claims a hold that Buffer refused | [`test/worker/org.test.ts`](test/worker/org.test.ts) "says 'flagged', not 'moved to drafts', when Buffer refuses the hold" |
 | A post is held and noted once, not on every check | [`test/worker/org.test.ts`](test/worker/org.test.ts) "does not hold again a post it already explained" |
 | Notes-only mode never changes a post | [`test/worker/org.test.ts`](test/worker/org.test.ts) "only writes notes in 'notes' mode, and never holds" |
 | Release restores the original time and removes the held tag | [`test/worker/org.test.ts`](test/worker/org.test.ts) "releases a held post at its original time and drops the held tag" |

@@ -1,0 +1,68 @@
+{
+ "posts": {
+  "edges": [
+   {
+    "node": {
+     "id": "id-004",
+     "text": "Back in stock: our natural linen shirt, €49 https://still-true.chatisthisreal.workers.dev/demo/shop/linen-shirt",
+     "status": "draft",
+     "dueAt": "2026-11-15T09:00:00.000Z",
+     "createdAt": "2026-11-11T15:33:26.763Z",
+     "updatedAt": "2026-11-11T15:33:27.957Z",
+     "channelId": "id-003",
+     "channelService": "mastodon",
+     "via": "buffer",
+     "isCustomScheduled": true,
+     "shareMode": "customScheduled",
+     "schedulingType": "automatic",
+     "author": {
+      "name": "Test account",
+      "urn": "urn:buffer:account:id-001"
+     },
+     "tags": [
+      {
+       "id": "id-005",
+       "name": "Still True: held"
+      }
+     ],
+     "metadata": {
+      "__typename": "MastodonPostMetadata"
+     }
+    }
+   },
+   {
+    "node": {
+     "id": "id-007",
+     "text": "Open studio on Sunday 16 November: meet the makers, free entry.",
+     "status": "scheduled",
+     "dueAt": "2026-11-15T10:30:00.000Z",
+     "createdAt": "2026-11-11T15:33:27.072Z",
+     "updatedAt": "2026-11-11T15:33:28.451Z",
+     "channelId": "id-003",
+     "channelService": "mastodon",
+     "via": "buffer",
+     "isCustomScheduled": true,
+     "shareMode": "customScheduled",
+     "schedulingType": "automatic",
+     "author": {
+      "name": "Test account",
+      "urn": "urn:buffer:account:id-001"
+     },
+     "tags": [
+      {
+       "id": "id-008",
+       "name": "Still True: review"
+      }
+     ],
+     "metadata": {
+      "__typename": "MastodonPostMetadata"
+     }
+    }
+   }
+  ],
+  "pageInfo": {
+   "hasNextPage": false,
+   "endCursor": "WkRFM09UUTNNemcyTURBd01EQT06YVRaaFpqUTRZV00zWldFd05EWmpZbUZpTmpBM1ltWTRZZz09"
+  }
+ }
+}

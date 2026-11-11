@@ -35,7 +35,11 @@ describe("the check cycle against Buffer", () => {
     expect(board.posts.find((p) => p.id === "p-ok")?.verdict).toBe("still_true");
 
     const hold = fake.calls.find((c) => c.operation === "Hold");
-    expect(hold?.variables).toEqual({ id: "p-oos", tagIds: ["tag-held"] });
+    expect(hold?.variables).toEqual({
+      id: "p-oos",
+      text: `Back in stock: linen shirt, €49 ${demo("/demo/shop/linen-shirt")}`,
+      tagIds: ["tag-held"],
+    });
     const note = fake.calls.find((c) => c.operation === "AddNote");
     expect(note?.variables.postId).toBe("p-oos");
     expect(String(note?.variables.text)).toContain("moved this post to drafts");
@@ -81,6 +85,7 @@ describe("the check cycle against Buffer", () => {
     expect(result.ok).toBe(true);
     expect(fake.calls.find((c) => c.operation === "Release")?.variables).toEqual({
       id: "p1",
+      text: `Back in stock ${demo("/demo/shop/linen-shirt")}`,
       dueAt: due,
       tagIds: [],
     });
@@ -112,6 +117,45 @@ describe("the check cycle against Buffer", () => {
     await org.dismiss("p1", "weekday_date_mismatch");
     const board = await org.checkNow();
     expect(board.posts[0]?.verdict).toBe("still_true");
+  });
+});
+
+describe("Buffer's rules for edits", () => {
+  it("sends the post's text with every edit, as Buffer requires", async () => {
+    const fake = fakeBuffer([
+      bufferPost("p1", `Back in stock ${demo("/demo/shop/linen-shirt")}`, inAnHour()),
+      bufferPost("p2", "Open studio on Friday 14 November 2026.", inAnHour()),
+    ]);
+    vi.stubGlobal("fetch", fake.fetch);
+    const org = account("edits-1");
+    await org.connectAccount({ id: "acc1", name: "Test shop", timezone: "Europe/Paris" }, tokens());
+    await org.checkNow();
+    await org.release("p1");
+    const edits = fake.calls.filter((c) =>
+      ["Hold", "Release", "SetTags", "EditText", "Reschedule"].includes(c.operation),
+    );
+    expect(edits.length).toBeGreaterThanOrEqual(3);
+    expect(edits.every((c) => typeof c.variables.text === "string" && c.variables.text.length > 0)).toBe(
+      true,
+    );
+  });
+
+  it("says 'flagged', not 'moved to drafts', when Buffer refuses the hold", async () => {
+    const fake = fakeBuffer(
+      [bufferPost("p1", `Back in stock ${demo("/demo/shop/linen-shirt")}`, inAnHour())],
+      {
+        holdFails: true,
+      },
+    );
+    vi.stubGlobal("fetch", fake.fetch);
+    const org = account("edits-2");
+    await org.connectAccount({ id: "acc1", name: "Test shop", timezone: "Europe/Paris" }, tokens());
+    const board = await org.checkNow();
+    const note = String(fake.calls.find((c) => c.operation === "AddNote")?.variables.text);
+    expect(note).toContain("flagged this post");
+    expect(note).not.toContain("moved this post to drafts");
+    expect(board.posts[0]?.status).toBe("scheduled");
+    expect(board.ledger.map((e) => e.event)).toContain("hold_failed");
   });
 });
 

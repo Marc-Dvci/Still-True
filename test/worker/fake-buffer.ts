@@ -35,7 +35,10 @@ export function bufferPost(id: string, text: string, dueAt: string, extra: Recor
   };
 }
 
-export function fakeBuffer(posts: Record<string, unknown>[], options: { world?: "down" } = {}): FakeBuffer {
+export function fakeBuffer(
+  posts: Record<string, unknown>[],
+  options: { world?: "down"; holdFails?: boolean } = {},
+): FakeBuffer {
   const calls: Call[] = [];
   const tokenRequests: URLSearchParams[] = [];
   const fake: FakeBuffer = {
@@ -62,7 +65,7 @@ export function fakeBuffer(posts: Record<string, unknown>[], options: { world?: 
         };
         const operation = /(?:query|mutation)\s+(\w+)/.exec(query)?.[1] ?? "unknown";
         calls.push({ operation, variables });
-        const data = answer(operation, variables, fake);
+        const data = answer(operation, variables, fake, options);
         return Response.json({ data }, { headers: { RateLimit: "limit=100, remaining=90, reset=600" } });
       }
       if (url.startsWith("https://www.gdacs.org/") || url.startsWith("https://en.wikipedia.org/")) {
@@ -76,7 +79,26 @@ export function fakeBuffer(posts: Record<string, unknown>[], options: { world?: 
   return fake;
 }
 
-function answer(operation: string, variables: Record<string, unknown>, fake: FakeBuffer): unknown {
+const EDITS = new Set(["Hold", "Release", "EditText", "Reschedule", "SetTags"]);
+
+function answer(
+  operation: string,
+  variables: Record<string, unknown>,
+  fake: FakeBuffer,
+  options: { holdFails?: boolean },
+): unknown {
+  // Recorded from api.buffer.com (11 Nov 2026): an editPost without text is refused.
+  if (EDITS.has(operation) && (typeof variables.text !== "string" || variables.text === "")) {
+    return {
+      editPost: {
+        __typename: "InvalidInputError",
+        message: "Invalid post: Post must have either text or media.",
+      },
+    };
+  }
+  if (operation === "Hold" && options.holdFails) {
+    return { editPost: { __typename: "UnexpectedError", message: "Buffer could not save the draft" } };
+  }
   const success = (id: string, status: string) => ({
     __typename: "PostActionSuccess",
     post: { id, status, dueAt: variables.dueAt ?? null, text: "" },

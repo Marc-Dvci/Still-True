@@ -616,13 +616,17 @@ export class OrgDO extends DurableObject<Env> {
     if (fresh.length === 0) return;
 
     const existingTagIds = post.tags.map((t) => t.id);
+    let movedToDrafts = false;
     if (result.verdict === "hold" && settings.policy === "hold" && post.status === "scheduled") {
       const tagIds = tags.heldTag ? unique([...existingTagIds, tags.heldTag]) : undefined;
-      const held = await client.request<{ editPost: MutationResult }>(HOLD, { id: post.id, tagIds });
+      const held = await client
+        .request<{ editPost: MutationResult }>(HOLD, { id: post.id, text: post.text, tagIds })
+        .catch((error: Error) => ({ editPost: { __typename: "Error", message: error.message } }));
       const failure = mutationFailed(held.editPost);
       if (failure) {
         await this.appendLedger(post.id, "hold_failed", failure);
       } else {
+        movedToDrafts = true;
         this.sql.exec(
           "UPDATE posts SET held_at = ?, held_due_at = ? WHERE post_id = ?",
           new Date(this.now()).toISOString(),
@@ -633,13 +637,17 @@ export class OrgDO extends DurableObject<Env> {
       }
     } else if (tags.reviewTag && !existingTagIds.includes(tags.reviewTag)) {
       await client
-        .request(SET_TAGS, { id: post.id, tagIds: unique([...existingTagIds, tags.reviewTag]) })
+        .request(SET_TAGS, {
+          id: post.id,
+          text: post.text,
+          tagIds: unique([...existingTagIds, tags.reviewTag]),
+        })
         .catch(() => null);
     }
 
     const scopes = this.get<{ scope: string }>("tokens")?.scope ?? "";
     if (scopes.includes("notes:write")) {
-      const text = noteText(result, fresh, settings, this.env.PUBLIC_ORIGIN ?? "", post.id);
+      const text = noteText(movedToDrafts, fresh, this.env.PUBLIC_ORIGIN ?? "", post.id);
       const note = await client
         .request<{ createCollaborationNote: MutationResult }>(ADD_NOTE, { postId: post.id, text })
         .catch((error: Error) => ({
@@ -678,6 +686,7 @@ export class OrgDO extends DurableObject<Env> {
     const tagIds = current.post.tags.map((t) => t.id).filter((id) => id !== heldTag);
     const result = await client.request<{ editPost: MutationResult }>(RELEASE, {
       id: postId,
+      text: current.post.text,
       dueAt: when,
       tagIds,
     });
@@ -705,8 +714,10 @@ export class OrgDO extends DurableObject<Env> {
       const failure = mutationFailed(result.editPost);
       if (failure) return { ok: false, message: failure };
     } else if (finding.fix.kind === "reschedule" && finding.fix.dueAt) {
+      const current = await client.request<{ post: BufferPost }>(POST, { id: postId });
       const result = await client.request<{ editPost: MutationResult }>(RESCHEDULE, {
         id: postId,
+        text: current.post.text,
         dueAt: finding.fix.dueAt,
       });
       const failure = mutationFailed(result.editPost);
@@ -938,16 +949,14 @@ function findingKey(finding: Finding): string {
 }
 
 export function noteText(
-  result: CheckResult,
+  movedToDrafts: boolean,
   findings: Finding[],
-  settings: Settings,
   origin: string,
   postId: string,
 ): string {
-  const head =
-    result.verdict === "hold" && settings.policy === "hold"
-      ? "Still True moved this post to drafts before it went out."
-      : "Still True flagged this post for a second look.";
+  const head = movedToDrafts
+    ? "Still True moved this post to drafts before it went out."
+    : "Still True flagged this post for a second look.";
   const lines = findings.map((f) => `• ${f.title}: ${f.detail}`);
   const link = origin ? `Review, fix or release it: ${origin}/board#post-${postId}` : "";
   return [head, ...lines, link].filter(Boolean).join("\n");

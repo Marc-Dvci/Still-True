@@ -38,6 +38,10 @@ All 13 are in [`src/buffer/operations.ts`](../src/buffer/operations.ts) and vali
 | `Tags` / `CreateTag` | `tagsV2`, `createTag` | Once per organisation, for the two Still True tags |
 | `CreateDraft` | `createPost(input: { ..., saveToDraft: true })` | The owner asks for sample drafts |
 
+Buffer refuses an `editPost` that does not carry `text` ("Invalid post: Post must have either text or
+media"), so every edit sends the post's current text, read in the same check. The live check
+([`LIVE.md`](LIVE.md)) found this; the test stand-in now refuses the same call, and a test pins it.
+
 Every mutation selects `... on MutationError { message }`, so a typed refusal (not found, limit reached,
 invalid input) is recorded in the account's action log instead of being lost.
 

@@ -141,10 +141,13 @@ const POST_ACTION_RESULT = /* GraphQL */ `
   }
 `;
 
+// Buffer refuses an editPost without `text` ("Post must have either text or media"), so every edit
+// below sends the post's current text with it.
+
 /** Moves a scheduled post to drafts. Its due time is kept by Still True for release. */
 export const HOLD = /* GraphQL */ `
-  mutation Hold($id: PostId!, $tagIds: [TagId!]) {
-    editPost(input: { id: $id, saveToDraft: true, tagIds: $tagIds }) {
+  mutation Hold($id: PostId!, $text: String!, $tagIds: [TagId!]) {
+    editPost(input: { id: $id, text: $text, saveToDraft: true, tagIds: $tagIds }) {
       ${POST_ACTION_RESULT}
     }
   }
@@ -152,9 +155,16 @@ export const HOLD = /* GraphQL */ `
 
 /** Schedules a held post again, at its original due time or a new one. */
 export const RELEASE = /* GraphQL */ `
-  mutation Release($id: PostId!, $dueAt: DateTime!, $tagIds: [TagId!]) {
+  mutation Release($id: PostId!, $text: String!, $dueAt: DateTime!, $tagIds: [TagId!]) {
     editPost(
-      input: { id: $id, saveToDraft: false, mode: customScheduled, dueAt: $dueAt, tagIds: $tagIds }
+      input: {
+        id: $id
+        text: $text
+        saveToDraft: false
+        mode: customScheduled
+        dueAt: $dueAt
+        tagIds: $tagIds
+      }
     ) {
       ${POST_ACTION_RESULT}
     }
@@ -172,16 +182,16 @@ export const EDIT_TEXT = /* GraphQL */ `
 
 /** Moves a post to a new due time (used by the weather fix). */
 export const RESCHEDULE = /* GraphQL */ `
-  mutation Reschedule($id: PostId!, $dueAt: DateTime!) {
-    editPost(input: { id: $id, mode: customScheduled, dueAt: $dueAt }) {
+  mutation Reschedule($id: PostId!, $text: String!, $dueAt: DateTime!) {
+    editPost(input: { id: $id, text: $text, mode: customScheduled, dueAt: $dueAt }) {
       ${POST_ACTION_RESULT}
     }
   }
 `;
 
 export const SET_TAGS = /* GraphQL */ `
-  mutation SetTags($id: PostId!, $tagIds: [TagId!]!) {
-    editPost(input: { id: $id, tagIds: $tagIds }) {
+  mutation SetTags($id: PostId!, $text: String!, $tagIds: [TagId!]!) {
+    editPost(input: { id: $id, text: $text, tagIds: $tagIds }) {
       ${POST_ACTION_RESULT}
     }
   }

@@ -1,0 +1,15 @@
+{
+ "channels": [
+  {
+   "id": "id-003",
+   "name": "Test account",
+   "displayName": "Test account",
+   "service": "mastodon",
+   "avatar": "https://mastodon.social/avatars/original/missing.png",
+   "timezone": "Europe/Paris",
+   "isDisconnected": false,
+   "isQueuePaused": false,
+   "isLocked": false
+  }
+ ]
+}

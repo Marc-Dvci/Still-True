@@ -1,0 +1,17 @@
+{
+ "account": {
+  "id": "id-001",
+  "name": "Test account",
+  "timezone": "Europe/Paris",
+  "organizations": [
+   {
+    "id": "id-002",
+    "name": "Test account",
+    "channelCount": 1,
+    "limits": {
+     "scheduledPosts": 10
+    }
+   }
+  ]
+ }
+}
