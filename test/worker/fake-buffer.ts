@@ -39,7 +39,7 @@ export function bufferPost(id: string, text: string, dueAt: string, extra: Recor
 
 export function fakeBuffer(
   posts: Record<string, unknown>[],
-  options: { world?: "down"; holdFails?: boolean } = {},
+  options: { world?: "down"; holdFails?: boolean; latencyMs?: number } = {},
 ): FakeBuffer {
   const calls: Call[] = [];
   const tokenRequests: URLSearchParams[] = [];
@@ -68,6 +68,8 @@ export function fakeBuffer(
         };
         const operation = /(?:query|mutation)\s+(\w+)/.exec(query)?.[1] ?? "unknown";
         calls.push({ operation, variables });
+        // A real round trip lets the Durable Object take other requests in the meantime.
+        if (options.latencyMs) await new Promise((resolve) => setTimeout(resolve, options.latencyMs));
         // Recorded from api.buffer.com (11 Nov 2026): a post that does not exist is a GraphQL error.
         if (operation === "Post" && !fake.posts.some((p) => p.id === variables.id)) {
           return Response.json({

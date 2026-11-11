@@ -47,6 +47,24 @@ describe("the check cycle against Buffer", () => {
     expect(board.ledger.map((e) => e.event)).toEqual(expect.arrayContaining(["held", "noted", "connected"]));
   });
 
+  it("runs one check at a time: two at once hold and note a post once", async () => {
+    const fake = fakeBuffer(
+      [
+        bufferPost("p1", `Back in stock ${demo("/demo/shop/linen-shirt")}`, inAnHour()),
+        bufferPost("p2", "Open studio on Friday 14 November 2026, free entry.", inAnHour()),
+      ],
+      { latencyMs: 5 },
+    );
+    vi.stubGlobal("fetch", fake.fetch);
+    const org = account("cycle-concurrent");
+    await org.connectAccount({ id: "acc1", name: "Test shop", timezone: "Europe/Paris" }, tokens());
+    const [first, second] = await Promise.all([org.checkNow(), org.checkNow()]);
+    expect(fake.calls.filter((c) => c.operation === "Hold")).toHaveLength(1);
+    expect(fake.calls.filter((c) => c.operation === "AddNote")).toHaveLength(2);
+    expect(first.posts.map((p) => p.id).sort()).toEqual(["p1", "p2"]);
+    expect(second.posts.map((p) => p.id).sort()).toEqual(["p1", "p2"]);
+  });
+
   it("does not hold again a post it already explained", async () => {
     const fake = fakeBuffer([
       bufferPost("p1", `Back in stock ${demo("/demo/shop/linen-shirt")}`, inAnHour()),

@@ -129,6 +129,8 @@ const MAX_HELD_LOOKUPS = 10;
 export class OrgDO extends DurableObject<Env> {
   private sql: SqlStorage;
   private budget: RateBudget | null = null;
+  /** The check in progress, if any. */
+  private running: Promise<void> | null = null;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -347,7 +349,24 @@ export class OrgDO extends DurableObject<Env> {
     return this.board();
   }
 
+  /**
+   * One check at a time. A Durable Object takes new requests while it waits on Buffer, so a check asked for
+   * during another one (the first check after connecting, then "Add sample drafts") would otherwise hold and
+   * note the same post twice, and the earlier check would drop rows the later one had just added. A second
+   * request waits for the running check, then runs its own on the state that check left.
+   */
   private async cycle(): Promise<void> {
+    while (this.running) await this.running.catch(() => undefined);
+    const run = this.runCycle();
+    this.running = run;
+    try {
+      await run;
+    } finally {
+      if (this.running === run) this.running = null;
+    }
+  }
+
+  private async runCycle(): Promise<void> {
     const account = this.get<{ id: string; timezone: string }>("account");
     if (!account) return;
     const client = this.client();
