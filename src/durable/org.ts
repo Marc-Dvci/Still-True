@@ -41,7 +41,7 @@ import { oauthConfig } from "../config";
 import { sampleDrafts } from "../demo/samples";
 import { suggestRewrite, type TextModel } from "../ai/assist";
 import { runDrill, type DrillResult } from "../demo/drill";
-import { localParts } from "../core/time";
+import { formatLocalDate, localParts } from "../core/time";
 
 export interface Settings {
   country: string;
@@ -718,14 +718,49 @@ export class OrgDO extends DurableObject<Env> {
     });
     const failure = mutationFailed(result.editPost);
     if (failure) return { ok: false, message: failure };
+    const codes = unique(this.findingsOf(postId).map((f) => f.code));
     this.sql.exec(
-      "UPDATE posts SET held_at = NULL, released_at = ?, dismissed = ? WHERE post_id = ?",
+      "UPDATE posts SET held_at = NULL, held_due_at = NULL, released_at = ?, dismissed = ? WHERE post_id = ?",
       new Date(this.now()).toISOString(),
-      JSON.stringify(unique(this.findingsOf(postId).map((f) => f.code))),
+      JSON.stringify(codes),
       postId,
     );
+    // Released as written: the person dismissed what was found, as the next check will read it.
+    this.settle(postId, codes, { dueAt: when, status: "scheduled" });
     await this.appendLedger(postId, "released", `scheduled for ${when}`);
-    return { ok: true, message: `Scheduled again for ${when}` };
+    return { ok: true, message: `Back in the queue for ${this.localTime(when)}.` };
+  }
+
+  /** "Friday 13 November, 10:00" in the account's time zone. */
+  private localTime(instant: string): string {
+    const parts = localParts(instant, this.get<{ timezone: string }>("account")?.timezone ?? "UTC");
+    return `${formatLocalDate(parts.date)}, ${String(parts.hour).padStart(2, "0")}:${String(parts.minute).padStart(2, "0")}`;
+  }
+
+  /**
+   * Updates the stored row right after Still True acted on it in Buffer, so the board shows the result
+   * at once; the next check (two seconds later) re-reads the post from Buffer.
+   */
+  private settle(
+    postId: string,
+    codes: string[],
+    patch: { text?: string; dueAt?: string; status?: string },
+  ): void {
+    const remaining = this.findingsOf(postId).filter((f) => !codes.includes(f.code));
+    const verdict = remaining.some((f) => f.verdict === "hold")
+      ? "hold"
+      : remaining.length
+        ? "review"
+        : "still_true";
+    this.sql.exec(
+      "UPDATE posts SET findings = ?, verdict = ?, text = COALESCE(?, text), due_at = COALESCE(?, due_at), status = COALESCE(?, status) WHERE post_id = ?",
+      JSON.stringify(remaining),
+      verdict,
+      patch.text ?? null,
+      patch.dueAt ?? null,
+      patch.status ?? null,
+      postId,
+    );
   }
 
   async applyFix(postId: string, code: string): Promise<{ ok: boolean; message: string }> {
@@ -750,6 +785,10 @@ export class OrgDO extends DurableObject<Env> {
       if (failure) return { ok: false, message: failure };
     }
     await this.appendLedger(postId, "fix_applied", `${code}: ${finding.fix.summary}`);
+    this.settle(postId, [code], {
+      ...(finding.fix.kind === "replace_text" && finding.fix.text ? { text: finding.fix.text } : {}),
+      ...(finding.fix.kind === "reschedule" && finding.fix.dueAt ? { dueAt: finding.fix.dueAt } : {}),
+    });
     const held = this.sql
       .exec<{ held_at: string | null }>("SELECT held_at FROM posts WHERE post_id = ?", postId)
       .toArray()[0];
@@ -758,7 +797,7 @@ export class OrgDO extends DurableObject<Env> {
       return this.release(postId, finding.fix.kind === "reschedule" ? finding.fix.dueAt : undefined);
     }
     await this.ctx.storage.setAlarm(this.now() + 2_000);
-    return { ok: true, message: finding.fix.summary };
+    return { ok: true, message: `Applied in Buffer: ${finding.fix.summary}.` };
   }
 
   async dismiss(postId: string, code: string): Promise<{ ok: boolean }> {

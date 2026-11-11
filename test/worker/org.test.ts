@@ -89,6 +89,10 @@ describe("the check cycle against Buffer", () => {
       dueAt: due,
       tagIds: [],
     });
+    // The board shows the release at once, in the account's time, before the next check.
+    expect(result.message).toMatch(/^Back in the queue for \w+day \d+ \w+, \d\d:\d\d\.$/);
+    const row = (await org.board()).posts.find((p) => p.id === "p1");
+    expect(row).toMatchObject({ status: "scheduled", verdict: "still_true", findings: [], dueAt: due });
     expect(await org.release("unknown")).toMatchObject({ ok: false });
   });
 
@@ -105,6 +109,12 @@ describe("the check cycle against Buffer", () => {
     expect(fake.calls.find((c) => c.operation === "EditText")?.variables.text).toBe(
       "Open studio on Saturday 14 November 2026, free entry.",
     );
+    expect(result.message).toBe('Applied in Buffer: Change "Friday" to "Saturday".');
+    const row = (await org.board()).posts.find((p) => p.id === "p1");
+    expect(row).toMatchObject({
+      text: "Open studio on Saturday 14 November 2026, free entry.",
+      findings: [],
+    });
     expect(await org.applyFix("p1", "price_changed")).toMatchObject({ ok: false });
   });
 

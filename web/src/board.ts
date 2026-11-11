@@ -105,7 +105,8 @@ function render(open = new Set<string>()): void {
   const counts = { hold: 0, review: 0, still_true: 0 };
   for (const p of state.posts) {
     if (p.status === "held") counts.hold += 1;
-    else if (p.verdict === "review") counts.review += 1;
+    // A draft with a hold-level problem ("Fix first") is not held: it counts with the posts to review.
+    else if (p.verdict === "review" || p.verdict === "hold") counts.review += 1;
     else if (p.verdict === "still_true") counts.still_true += 1;
   }
   $("counts").replaceChildren(
