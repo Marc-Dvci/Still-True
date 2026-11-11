@@ -54,6 +54,8 @@ jobs:
       - run: npm run build:web
   e2e:
     runs-on: ubuntu-latest
+    # Playwright's own image (the version in package-lock.json) carries Chromium and its system libraries.
+    container: mcr.microsoft.com/playwright:v1.65.0-noble
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -61,7 +63,6 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
       - name: Local secrets for wrangler dev
         run: node scripts/dev_secrets.mjs
       - name: Browser tests with axe-core, desktop and mobile
