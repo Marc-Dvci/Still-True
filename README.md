@@ -15,11 +15,12 @@
 
 > In the IT audits I worked on, a control counted only if it still held on the day it mattered, not the day it was approved. Still True applies that to a queue. *Marc Donovici*
 
-[Live app](https://still-true.chatisthisreal.workers.dev) · [Fire drill, no sign-in](https://still-true.chatisthisreal.workers.dev/drill) · [For judges](#for-judges) · [How it works](#how-it-works) · [Evidence](#evidence) · [Run it](#run-it)
+[Film (1:50)](https://youtu.be/2EcMPbYuOi0) · [Live app](https://still-true.chatisthisreal.workers.dev) · [Fire drill, no sign-in](https://still-true.chatisthisreal.workers.dev/drill) · [For judges](#for-judges) · [How it works](#how-it-works) · [Evidence](#evidence) · [Run it](#run-it)
 
 | | |
 |---|---|
 | Live | [still-true.chatisthisreal.workers.dev](https://still-true.chatisthisreal.workers.dev), any Buffer account connects with OAuth |
+| Film | [Still True in 1:50](https://youtu.be/2EcMPbYuOi0): a real queue held, tagged, explained and released inside Buffer |
 | Built for | Buffer Commit 2026 |
 | Built with | Buffer GraphQL API and OAuth 2.0 with PKCE · Cloudflare Workers, Durable Objects (SQLite), Workers AI · TypeScript |
 | Headline | 410 labelled cases written before the code: every verdict matches the rules, no healthy post held or flagged. Five real days replayed with the alerts, news and weather recorded for them |
