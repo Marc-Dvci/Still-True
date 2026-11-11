@@ -27,7 +27,7 @@ const regionNames = new Intl.DisplayNames(["en"], { type: "region" });
 
 /** "US" -> "the United States", "FR" -> "France". */
 export function countryName(code: string): string {
-  let name = code;
+  let name: string;
   try {
     name = regionNames.of(code) ?? code;
   } catch {

@@ -4,19 +4,103 @@
   <head>
     <meta charset="utf-8" />
     <style>
-      @font-face { font-family: "Barlow Condensed"; font-weight: 700; src: url("../web/public/fonts/BarlowCondensed-700-latin.woff2") format("woff2"); }
-      @font-face { font-family: "Inter"; font-weight: 400; src: url("../web/public/fonts/Inter-400-latin.woff2") format("woff2"); }
-      body { margin: 0; background: #fff; }
-      #card { width: var(--w, 1200px); height: var(--h, 630px); box-sizing: border-box; padding: 64px 72px; background: #fff; color: #111; display: flex; flex-direction: column; justify-content: space-between; font-family: Inter, sans-serif; }
-      .mark { display: flex; align-items: center; gap: 18px; font: 700 54px/1 "Barlow Condensed"; text-transform: uppercase; letter-spacing: .02em; }
-      .clock { width: 50px; height: 50px; border: 5px solid #111; border-radius: 50%; position: relative; box-sizing: border-box; }
-      .clock::before { content: ""; position: absolute; left: calc(50% - 2.5px); top: 6px; width: 5px; height: 15px; background: #d7261e; }
-      .clock::after { content: ""; position: absolute; left: calc(50% - 6px); top: 2px; width: 12px; height: 12px; border-radius: 50%; background: #d7261e; }
-      h1 { font: 700 78px/0.98 "Barlow Condensed"; text-transform: uppercase; margin: 0; max-width: 980px; }
-      .rows { display: grid; gap: 12px; }
-      .row { display: grid; grid-template-columns: 92px 1fr 150px; gap: 20px; align-items: center; font-size: 25px; border-top: 1px solid #e4e4e4; padding-top: 12px; }
-      .flap { background: #151515; color: #fff; font: 700 24px/1 "Barlow Condensed"; letter-spacing: .08em; padding: 8px 10px 6px; border-radius: 4px; text-align: center; text-transform: uppercase; }
-      .flap.hold { background: #d7261e; } .flap.review { background: #f2a900; color: #111; }
+      @font-face {
+        font-family: "Barlow Condensed";
+        font-weight: 700;
+        src: url("../web/public/fonts/BarlowCondensed-700-latin.woff2") format("woff2");
+      }
+      @font-face {
+        font-family: "Inter";
+        font-weight: 400;
+        src: url("../web/public/fonts/Inter-400-latin.woff2") format("woff2");
+      }
+      body {
+        margin: 0;
+        background: #fff;
+      }
+      #card {
+        width: var(--w, 1200px);
+        height: var(--h, 630px);
+        box-sizing: border-box;
+        padding: 64px 72px;
+        background: #fff;
+        color: #111;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        font-family: Inter, sans-serif;
+      }
+      .mark {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        font: 700 54px/1 "Barlow Condensed";
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+      }
+      .clock {
+        width: 50px;
+        height: 50px;
+        border: 5px solid #111;
+        border-radius: 50%;
+        position: relative;
+        box-sizing: border-box;
+      }
+      .clock::before {
+        content: "";
+        position: absolute;
+        left: calc(50% - 2.5px);
+        top: 6px;
+        width: 5px;
+        height: 15px;
+        background: #d7261e;
+      }
+      .clock::after {
+        content: "";
+        position: absolute;
+        left: calc(50% - 6px);
+        top: 2px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #d7261e;
+      }
+      h1 {
+        font: 700 78px/0.98 "Barlow Condensed";
+        text-transform: uppercase;
+        margin: 0;
+        max-width: 980px;
+      }
+      .rows {
+        display: grid;
+        gap: 12px;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 92px 1fr 150px;
+        gap: 20px;
+        align-items: center;
+        font-size: 25px;
+        border-top: 1px solid #e4e4e4;
+        padding-top: 12px;
+      }
+      .flap {
+        background: #151515;
+        color: #fff;
+        font: 700 24px/1 "Barlow Condensed";
+        letter-spacing: 0.08em;
+        padding: 8px 10px 6px;
+        border-radius: 4px;
+        text-align: center;
+        text-transform: uppercase;
+      }
+      .flap.hold {
+        background: #d7261e;
+      }
+      .flap.review {
+        background: #f2a900;
+        color: #111;
+      }
     </style>
   </head>
   <body>
@@ -24,8 +108,14 @@
       <div class="mark"><span class="clock"></span>Still True</div>
       <h1>The last look before every scheduled post goes out</h1>
       <div class="rows">
-        <div class="row"><span class="flap">09:30</span><span>Our prices are on fire this week 🔥</span><span class="flap hold">Held</span></div>
-        <div class="row"><span class="flap">14:00</span><span>Terrace open this afternoon ☀️</span><span class="flap review">Review</span></div>
+        <div class="row">
+          <span class="flap">09:30</span><span>Our prices are on fire this week 🔥</span
+          ><span class="flap hold">Held</span>
+        </div>
+        <div class="row">
+          <span class="flap">14:00</span><span>Terrace open this afternoon ☀️</span
+          ><span class="flap review">Review</span>
+        </div>
       </div>
     </div>
   </body>

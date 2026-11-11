@@ -13,11 +13,14 @@ async function render(source: string, out: string, scale: number, vars?: { w: nu
   const page = await browser.newPage({ deviceScaleFactor: scale, viewport: { width: 1400, height: 1200 } });
   await page.goto(pathToFileURL(resolve(root, source)).href);
   if (vars) {
-    await page.evaluate(([w, h]) => {
-      const el = document.querySelector<HTMLElement>("#card");
-      el?.style.setProperty("--w", `${w}px`);
-      el?.style.setProperty("--h", `${h}px`);
-    }, [vars.w, vars.h]);
+    await page.evaluate(
+      ([w, h]) => {
+        const el = document.querySelector<HTMLElement>("#card");
+        el?.style.setProperty("--w", `${w}px`);
+        el?.style.setProperty("--h", `${h}px`);
+      },
+      [vars.w, vars.h],
+    );
   }
   await page.evaluate(() => document.fonts.ready);
   await page.locator(vars ? "#card" : "#figure").screenshot({ path: resolve(root, out) });

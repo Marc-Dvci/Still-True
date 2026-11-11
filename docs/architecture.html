@@ -4,42 +4,161 @@
   <head>
     <meta charset="utf-8" />
     <style>
-      @font-face { font-family: "Barlow Condensed"; font-weight: 700; src: url("../web/public/fonts/BarlowCondensed-700-latin.woff2") format("woff2"); }
-      @font-face { font-family: "Barlow Condensed"; font-weight: 600; src: url("../web/public/fonts/BarlowCondensed-600-latin.woff2") format("woff2"); }
-      @font-face { font-family: "Inter"; font-weight: 400; src: url("../web/public/fonts/Inter-400-latin.woff2") format("woff2"); }
-      @font-face { font-family: "Inter"; font-weight: 600; src: url("../web/public/fonts/Inter-600-latin.woff2") format("woff2"); }
-      body { margin: 0; background: #fff; color: #111; font: 400 15px/1.45 Inter, sans-serif; }
-      #figure { width: 860px; padding: 26px 28px 30px; box-sizing: border-box; background: #fff; }
-      h1 { font: 700 28px/1 "Barlow Condensed", sans-serif; text-transform: uppercase; margin: 0 0 4px; letter-spacing: .01em; }
-      .sub { color: #5f5f5f; margin: 0 0 20px; font-size: 14px; }
-      .lane { display: grid; grid-template-columns: 150px 1fr; gap: 16px; padding: 14px 0; border-top: 1px solid #e4e4e4; }
-      .lane:first-of-type { border-top: 2px solid #111; }
-      .tag { font: 700 13px/1.2 "Barlow Condensed", sans-serif; letter-spacing: .14em; text-transform: uppercase; color: #5f5f5f; padding-top: 3px; }
-      .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; }
-      .node { border-left: 3px solid #111; padding: 4px 10px 5px; min-width: 120px; }
-      .node b { display: block; font: 700 17px/1.15 "Barlow Condensed", sans-serif; letter-spacing: .02em; }
-      .node span { display: block; font-size: 12.5px; color: #333; }
-      .node.red { border-left-color: #d7261e; }
-      .node.amber { border-left-color: #f2a900; }
-      .node.grey { border-left-color: #b5b5b5; }
-      .arrow { align-self: center; font: 700 20px/1 Inter; color: #d7261e; }
-      .flap { display: inline-block; background: #151515; color: #fff; font: 700 12px/1 "Barlow Condensed"; letter-spacing: .08em; padding: 4px 7px 3px; border-radius: 3px; margin-right: 4px; text-transform: uppercase; }
-      .node span.flap { display: inline-block; color: #fff; margin-top: 4px; }
-      .node span.flap.hold { background: #d7261e; } .node span.flap.review { background: #f2a900; color: #111; }
-      .boundary { margin-top: 14px; border-top: 2px dashed #d7261e; padding-top: 10px; font-size: 13.5px; }
-      .boundary strong { color: #b51d16; }
+      @font-face {
+        font-family: "Barlow Condensed";
+        font-weight: 700;
+        src: url("../web/public/fonts/BarlowCondensed-700-latin.woff2") format("woff2");
+      }
+      @font-face {
+        font-family: "Barlow Condensed";
+        font-weight: 600;
+        src: url("../web/public/fonts/BarlowCondensed-600-latin.woff2") format("woff2");
+      }
+      @font-face {
+        font-family: "Inter";
+        font-weight: 400;
+        src: url("../web/public/fonts/Inter-400-latin.woff2") format("woff2");
+      }
+      @font-face {
+        font-family: "Inter";
+        font-weight: 600;
+        src: url("../web/public/fonts/Inter-600-latin.woff2") format("woff2");
+      }
+      body {
+        margin: 0;
+        background: #fff;
+        color: #111;
+        font:
+          400 15px/1.45 Inter,
+          sans-serif;
+      }
+      #figure {
+        width: 860px;
+        padding: 26px 28px 30px;
+        box-sizing: border-box;
+        background: #fff;
+      }
+      h1 {
+        font:
+          700 28px/1 "Barlow Condensed",
+          sans-serif;
+        text-transform: uppercase;
+        margin: 0 0 4px;
+        letter-spacing: 0.01em;
+      }
+      .sub {
+        color: #5f5f5f;
+        margin: 0 0 20px;
+        font-size: 14px;
+      }
+      .lane {
+        display: grid;
+        grid-template-columns: 150px 1fr;
+        gap: 16px;
+        padding: 14px 0;
+        border-top: 1px solid #e4e4e4;
+      }
+      .lane:first-of-type {
+        border-top: 2px solid #111;
+      }
+      .tag {
+        font:
+          700 13px/1.2 "Barlow Condensed",
+          sans-serif;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: #5f5f5f;
+        padding-top: 3px;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: stretch;
+      }
+      .node {
+        border-left: 3px solid #111;
+        padding: 4px 10px 5px;
+        min-width: 120px;
+      }
+      .node b {
+        display: block;
+        font:
+          700 17px/1.15 "Barlow Condensed",
+          sans-serif;
+        letter-spacing: 0.02em;
+      }
+      .node span {
+        display: block;
+        font-size: 12.5px;
+        color: #333;
+      }
+      .node.red {
+        border-left-color: #d7261e;
+      }
+      .node.amber {
+        border-left-color: #f2a900;
+      }
+      .node.grey {
+        border-left-color: #b5b5b5;
+      }
+      .arrow {
+        align-self: center;
+        font: 700 20px/1 Inter;
+        color: #d7261e;
+      }
+      .flap {
+        display: inline-block;
+        background: #151515;
+        color: #fff;
+        font: 700 12px/1 "Barlow Condensed";
+        letter-spacing: 0.08em;
+        padding: 4px 7px 3px;
+        border-radius: 3px;
+        margin-right: 4px;
+        text-transform: uppercase;
+      }
+      .node span.flap {
+        display: inline-block;
+        color: #fff;
+        margin-top: 4px;
+      }
+      .node span.flap.hold {
+        background: #d7261e;
+      }
+      .node span.flap.review {
+        background: #f2a900;
+        color: #111;
+      }
+      .boundary {
+        margin-top: 14px;
+        border-top: 2px dashed #d7261e;
+        padding-top: 10px;
+        font-size: 13.5px;
+      }
+      .boundary strong {
+        color: #b51d16;
+      }
     </style>
   </head>
   <body>
     <div id="figure">
       <h1>Still True · architecture</h1>
-      <p class="sub">One Cloudflare Worker. One Durable Object per connected Buffer account, one shared for the world. Rules decide every verdict.</p>
+      <p class="sub">
+        One Cloudflare Worker. One Durable Object per connected Buffer account, one shared for the world.
+        Rules decide every verdict.
+      </p>
 
       <div class="lane">
         <div class="tag">Buffer</div>
         <div class="row">
-          <div class="node"><b>OAuth 2.0 + PKCE</b><span>auth.buffer.com · rotating refresh tokens</span></div>
-          <div class="node"><b>GraphQL API</b><span>api.buffer.com · 13 operations, validated against the introspected schema</span></div>
+          <div class="node">
+            <b>OAuth 2.0 + PKCE</b><span>auth.buffer.com · rotating refresh tokens</span>
+          </div>
+          <div class="node">
+            <b>GraphQL API</b
+            ><span>api.buffer.com · 13 operations, validated against the introspected schema</span>
+          </div>
         </div>
       </div>
 
@@ -57,18 +176,29 @@
       <div class="lane">
         <div class="tag">Per account</div>
         <div class="row">
-          <div class="node red"><b>OrgDO · SQLite</b><span>tokens (AES-GCM), settings, first-seen due times, hash-chained action log</span></div>
-          <div class="node red"><b>Alarm schedule</b><span>sweep every 3 h · re-check at T−60 and T−10 min</span></div>
-          <div class="node red"><b>Read queue</b><span><code>posts</code>: scheduled and timed drafts, next 7 days</span></div>
+          <div class="node red">
+            <b>OrgDO · SQLite</b
+            ><span>tokens (AES-GCM), settings, first-seen due times, hash-chained action log</span>
+          </div>
+          <div class="node red">
+            <b>Alarm schedule</b><span>sweep every 3 h · re-check at T−60 and T−10 min</span>
+          </div>
+          <div class="node red">
+            <b>Read queue</b><span><code>posts</code>: scheduled and timed drafts, next 7 days</span>
+          </div>
         </div>
       </div>
 
       <div class="lane">
         <div class="tag">Facts</div>
         <div class="row">
-          <div class="node amber"><b>Linked pages</b><span>schema.org JSON-LD, Shopify .js, HTTP status</span></div>
+          <div class="node amber">
+            <b>Linked pages</b><span>schema.org JSON-LD, Shopify .js, HTTP status</span>
+          </div>
           <div class="node amber"><b>Open-Meteo</b><span>forecast at the due hour</span></div>
-          <div class="node amber"><b>WorldDO</b><span>GDACS alerts + Wikipedia Current Events, every 30 min</span></div>
+          <div class="node amber">
+            <b>WorldDO</b><span>GDACS alerts + Wikipedia Current Events, every 30 min</span>
+          </div>
           <div class="node amber"><b>Remembrance</b><span>31 sourced days, 17 countries</span></div>
         </div>
       </div>
@@ -76,22 +206,37 @@
       <div class="lane">
         <div class="tag">Decision core</div>
         <div class="row">
-          <div class="node"><b>calendar · page · weather · remembrance · world</b><span>pure functions, 18 finding codes, each naming its evidence</span></div>
+          <div class="node">
+            <b>calendar · page · weather · remembrance · world</b
+            ><span>pure functions, 18 finding codes, each naming its evidence</span>
+          </div>
           <div class="arrow">→</div>
-          <div class="node"><b>Verdict</b><span class="flap">Still true</span> <span class="flap review">Review</span> <span class="flap hold">Held</span></div>
+          <div class="node">
+            <b>Verdict</b><span class="flap">Still true</span> <span class="flap review">Review</span>
+            <span class="flap hold">Held</span>
+          </div>
         </div>
       </div>
 
       <div class="lane">
         <div class="tag">Back in Buffer</div>
         <div class="row">
-          <div class="node red"><b>Hold</b><span><code>editPost(saveToDraft: true)</code>, never deletes</span></div>
-          <div class="node red"><b>Explain</b><span><code>createCollaborationNote</code> + tag</span></div>
-          <div class="node red"><b>Release · fix</b><span><code>editPost(dueAt)</code> · <code>editPost(text)</code></span></div>
+          <div class="node red">
+            <b>Hold</b><span><code>editPost(saveToDraft: true)</code>, never deletes</span>
+          </div>
+          <div class="node red">
+            <b>Explain</b><span><code>createCollaborationNote</code> + tag</span>
+          </div>
+          <div class="node red">
+            <b>Release · fix</b><span><code>editPost(dueAt)</code> · <code>editPost(text)</code></span>
+          </div>
         </div>
       </div>
 
-      <div class="boundary"><strong>Model boundary.</strong> Workers AI drafts new wording only when a person asks, and a draft that adds a number, date, link or hashtag is refused. No model is called during a check.</div>
+      <div class="boundary">
+        <strong>Model boundary.</strong> Workers AI drafts new wording only when a person asks, and a draft
+        that adds a number, date, link or hashtag is refused. No model is called during a check.
+      </div>
     </div>
   </body>
 </html>
