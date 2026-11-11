@@ -100,6 +100,32 @@ app.get("/auth/callback", async (c) => {
   }
 });
 
+// Local development only: sign in with a Buffer personal API key instead of OAuth, to work on the board
+// against one's own account. Answers 404 unless DEV_KEY_LOGIN=1 and the request comes from localhost.
+app.get("/dev/connect", async (c) => {
+  const host = new URL(c.req.url).hostname;
+  if (c.env.DEV_KEY_LOGIN !== "1" || !c.env.BUFFER_DEV_KEY || !["127.0.0.1", "localhost"].includes(host)) {
+    return c.notFound();
+  }
+  const key = c.env.BUFFER_DEV_KEY;
+  const client = new BufferClient({ token: async () => key });
+  const { account } = await client.request<{
+    account: { id: string; name: string | null; timezone: string | null };
+  }>(ACCOUNT);
+  const timezone = account.timezone && isValidTimeZone(account.timezone) ? account.timezone : "UTC";
+  await org(c, account.id).connectAccount(
+    { id: account.id, name: account.name ?? "Buffer account", timezone },
+    {
+      accessToken: key,
+      refreshToken: "personal-key",
+      scope: "account:read posts:read posts:write notes:read notes:write",
+      expiresAt: Date.now() + 365 * 86_400_000,
+    },
+  );
+  c.header("Set-Cookie", await sessionCookie(c.env.SESSION_SECRET, account.id));
+  return c.redirect("/board");
+});
+
 app.post("/auth/logout", async (c) => {
   if (!sameOrigin(c.req.raw)) return c.json({ error: "Cross-site request refused" }, 403);
   c.header("Set-Cookie", clearCookie(SESSION_COOKIE));

@@ -8,7 +8,7 @@
     "directory": "./dist/web",
     "binding": "ASSETS",
     "not_found_handling": "404-page",
-    "run_worker_first": ["/api/*", "/auth/*", "/demo/*", "/mcp"],
+    "run_worker_first": ["/api/*", "/auth/*", "/demo/*", "/dev/*", "/mcp"],
   },
   "ai": { "binding": "AI" },
   "durable_objects": {

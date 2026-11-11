@@ -17,4 +17,8 @@ export interface Env {
   DEMO?: string;
   /** Public origin, used in notes written into Buffer. */
   PUBLIC_ORIGIN?: string;
+  /** Local development only: "1" enables /dev/connect, which signs in with BUFFER_DEV_KEY. */
+  DEV_KEY_LOGIN?: string;
+  /** Local development only: a Buffer personal API key (Settings > API). */
+  BUFFER_DEV_KEY?: string;
 }

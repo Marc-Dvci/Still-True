@@ -73,6 +73,12 @@ describe("signing in with Buffer", () => {
   });
 });
 
+describe("local development sign-in", () => {
+  it("does not exist unless switched on locally", async () => {
+    expect((await SELF.fetch(`${BASE}/dev/connect`, { redirect: "manual" })).status).toBe(404);
+  });
+});
+
 describe("signed-in routes", () => {
   it("refuse a request without a session", async () => {
     expect((await SELF.fetch(`${BASE}/api/me/board`)).status).toBe(401);

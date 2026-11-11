@@ -7,3 +7,7 @@ BUFFER_REDIRECT_URI=https://localhost:8787/auth/callback
 # Generate: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 SESSION_SECRET=
 TOKEN_KEY=
+
+# Local development only: sign in at http://127.0.0.1:8787/dev/connect with a personal API key.
+DEV_KEY_LOGIN=
+BUFFER_DEV_KEY=
