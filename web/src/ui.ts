@@ -191,8 +191,14 @@ function busy(button: HTMLButtonElement, work: () => Promise<void>): void {
   });
 }
 
-export function renderRow(row: RowModel, actions: RowActions = {}, open = false): HTMLLIElement {
-  const li = el("li", { class: `row${open ? " open" : ""}`, id: `post-${row.id}` });
+/** `idPrefix` keeps element ids unique when the same post is drawn twice (the board and its fire drill). */
+export function renderRow(
+  row: RowModel,
+  actions: RowActions = {},
+  open = false,
+  idPrefix = "",
+): HTMLLIElement {
+  const li = el("li", { class: `row${open ? " open" : ""}`, id: `${idPrefix}post-${row.id}` });
   const { time, day } = localTime(row.dueAt, row.timezone);
   const statusKey =
     row.status === "held"
@@ -210,7 +216,12 @@ export function renderRow(row: RowModel, actions: RowActions = {}, open = false)
   const flapNode = flap(label, statusKey);
   const summary = el(
     "button",
-    { class: "summary", type: "button", "aria-expanded": String(open), "aria-controls": `detail-${row.id}` },
+    {
+      class: "summary",
+      type: "button",
+      "aria-expanded": String(open),
+      "aria-controls": `${idPrefix}detail-${row.id}`,
+    },
     el(
       "span",
       { class: "when" },
@@ -239,7 +250,7 @@ export function renderRow(row: RowModel, actions: RowActions = {}, open = false)
   });
   li.append(summary);
 
-  const detail = el("div", { class: "detail", id: `detail-${row.id}` });
+  const detail = el("div", { class: "detail", id: `${idPrefix}detail-${row.id}` });
   if (row.findings.length === 0) {
     detail.append(
       el(

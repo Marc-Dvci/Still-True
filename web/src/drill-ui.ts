@@ -13,7 +13,7 @@ export function renderDrill(host: HTMLElement, result: DrillResponse): void {
       verdict: post.result.verdict,
       findings: post.result.findings,
     };
-    list.append(renderRow(row));
+    list.append(renderRow(row, {}, false, "drill-"));
   }
   host.replaceChildren(
     el("p", { class: "eyebrow" }, `${result.scenario.place} · ${result.scenario.date}`),
