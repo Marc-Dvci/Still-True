@@ -3,21 +3,47 @@ import { findAll } from "../text";
 import { formatLocalDate, localParts } from "../time";
 import type { CheckContext, Finding, PostUnderCheck } from "../types";
 
-const SUNNY = /\b(sunny|sunshine|sun'?s out|sun is out|soak up the sun|blue skies?|ensoleille|soleil|sol y|sonne|sonnig)\b|☀/u;
+const SUNNY =
+  /\b(sunny|sunshine|sun'?s out|sun is out|soak up the sun|blue skies?|ensoleille|soleil|sol y|sonne|sonnig)\b|☀/u;
 const OUTDOOR =
   /\b(terrace|patio|rooftop|beer garden|outdoor seating|garden is open|al fresco|picnic|bbq|barbecue|beach day|terrasse|pique-?nique|plein air|en exterieur|terraza|biergarten)\b/;
 const SNOW = /\b(snow day|snowy|let it snow|fresh snow|neige|enneige)\b/;
 
 const WET_CODES = (code: number): boolean =>
-  (code >= 51 && code <= 67) || (code >= 71 && code <= 77) || (code >= 80 && code <= 86) || (code >= 95 && code <= 99);
+  (code >= 51 && code <= 67) ||
+  (code >= 71 && code <= 77) ||
+  (code >= 80 && code <= 86) ||
+  (code >= 95 && code <= 99);
 
 const WMO: Record<number, string> = {
-  0: "clear sky", 1: "mainly clear", 2: "partly cloudy", 3: "overcast", 45: "fog", 48: "freezing fog",
-  51: "light drizzle", 53: "drizzle", 55: "dense drizzle", 56: "freezing drizzle", 57: "freezing drizzle",
-  61: "light rain", 63: "rain", 65: "heavy rain", 66: "freezing rain", 67: "heavy freezing rain",
-  71: "light snow", 73: "snow", 75: "heavy snow", 77: "snow grains", 80: "rain showers", 81: "rain showers",
-  82: "violent rain showers", 85: "snow showers", 86: "heavy snow showers", 95: "thunderstorm",
-  96: "thunderstorm with hail", 99: "thunderstorm with heavy hail",
+  0: "clear sky",
+  1: "mainly clear",
+  2: "partly cloudy",
+  3: "overcast",
+  45: "fog",
+  48: "freezing fog",
+  51: "light drizzle",
+  53: "drizzle",
+  55: "dense drizzle",
+  56: "freezing drizzle",
+  57: "freezing drizzle",
+  61: "light rain",
+  63: "rain",
+  65: "heavy rain",
+  66: "freezing rain",
+  67: "heavy freezing rain",
+  71: "light snow",
+  73: "snow",
+  75: "heavy snow",
+  77: "snow grains",
+  80: "rain showers",
+  81: "rain showers",
+  82: "violent rain showers",
+  85: "snow showers",
+  86: "heavy snow showers",
+  95: "thunderstorm",
+  96: "thunderstorm with hail",
+  99: "thunderstorm with heavy hail",
 };
 
 export function describeWeather(code: number | null): string {
@@ -31,7 +57,10 @@ export function weatherFindings(post: PostUnderCheck, ctx: CheckContext): Findin
   const outdoor = findAll(post.text, OUTDOOR);
   const snow = findAll(post.text, SNOW);
   const evidence = [
-    { label: "Forecast at that hour", value: `${describeWeather(w.weatherCode)}, rain ${w.precipProbability ?? "?"} %, cloud ${w.cloudCover ?? "?"} %, ${w.temperatureC ?? "?"} °C` },
+    {
+      label: "Forecast at that hour",
+      value: `${describeWeather(w.weatherCode)}, rain ${w.precipProbability ?? "?"} %, cloud ${w.cloudCover ?? "?"} %, ${w.temperatureC ?? "?"} °C`,
+    },
     { label: "Source", value: "Open-Meteo", source: "https://open-meteo.com/" },
   ];
   const wet = (w.precipProbability ?? 0) >= 60 || (w.weatherCode !== null && WET_CODES(w.weatherCode));

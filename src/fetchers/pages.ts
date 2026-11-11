@@ -61,7 +61,14 @@ export async function pageFactsFor(url: string, options: PageFetchOptions): Prom
     const demo = renderDemoPage(new URL(url).pathname, now());
     if (!demo) return { status: 404, finalUrl: url, fetchedAt };
     const parsed = parsePage(demo.html);
-    return { status: 200, finalUrl: url, title: parsed.title, product: parsed.product, event: parsed.event, fetchedAt };
+    return {
+      status: 200,
+      finalUrl: url,
+      title: parsed.title,
+      product: parsed.product,
+      event: parsed.event,
+      fetchedAt,
+    };
   }
   if (!isFetchable(url)) return { status: 0, finalUrl: url, fetchedAt };
   const fetchImpl = options.fetchImpl ?? fetch.bind(globalThis);

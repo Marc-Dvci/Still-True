@@ -3,7 +3,15 @@
 // original post does not contain, so the model cannot introduce a new claim.
 import type { Finding } from "../core/types";
 
-export const MODELS = ["@cf/meta/llama-3.3-70b-instruct-fp8-fast", "@cf/meta/llama-3.1-8b-instruct-fast"] as const;
+/** The slice of the Workers AI binding this module uses. */
+export interface TextModel {
+  run(model: string, input: unknown): Promise<unknown>;
+}
+
+export const MODELS = [
+  "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+  "@cf/meta/llama-3.1-8b-instruct-fast",
+] as const;
 
 const SYSTEM = [
   "You rewrite one social media post so that a stated problem no longer applies.",
@@ -20,9 +28,11 @@ const WEEKDAYS =
 /** Tokens a suggestion may use: those already in the post, plus those the deterministic fix proposes. */
 export function introducedClaims(original: string, suggestion: string, allowed: string[] = []): string[] {
   const known = new Set(
-    [...original.matchAll(TOKENS), ...original.matchAll(WEEKDAYS), ...allowed.flatMap((a) => [...a.matchAll(TOKENS), ...a.matchAll(WEEKDAYS)])].map((m) =>
-      m[0].toLowerCase(),
-    ),
+    [
+      ...original.matchAll(TOKENS),
+      ...original.matchAll(WEEKDAYS),
+      ...allowed.flatMap((a) => [...a.matchAll(TOKENS), ...a.matchAll(WEEKDAYS)]),
+    ].map((m) => m[0].toLowerCase()),
   );
   const added = [...suggestion.matchAll(TOKENS), ...suggestion.matchAll(WEEKDAYS)]
     .map((m) => m[0].toLowerCase())
@@ -44,24 +54,32 @@ export interface Suggestion {
   model?: string;
 }
 
-export async function suggestRewrite(ai: Ai | undefined, text: string, finding: Finding): Promise<Suggestion> {
+export async function suggestRewrite(
+  ai: TextModel | undefined,
+  text: string,
+  finding: Finding,
+): Promise<Suggestion> {
   if (!ai) return { text: null, reason: "Suggestions are unavailable on this deployment." };
   const prompt = `Post:\n${text}\n\nProblem: ${finding.title}. ${finding.detail}`;
   for (const model of MODELS) {
     try {
-      const result = (await ai.run(model as Parameters<Ai["run"]>[0], {
+      const result = (await ai.run(model, {
         messages: [
           { role: "system", content: SYSTEM },
           { role: "user", content: prompt },
         ],
         max_tokens: 400,
         temperature: 0.3,
-      } as never)) as { response?: string };
+      })) as { response?: string };
       const candidate = cleanSuggestion(result.response ?? "");
       if (!candidate) continue;
       const added = introducedClaims(text, candidate, finding.fix?.text ? [finding.fix.text] : []);
       if (added.length > 0) {
-        return { text: null, reason: `The suggestion added ${added.join(", ")}, which the post did not say.`, model };
+        return {
+          text: null,
+          reason: `The suggestion added ${added.join(", ")}, which the post did not say.`,
+          model,
+        };
       }
       if (candidate.length > Math.max(text.length * 1.6, text.length + 120)) {
         return { text: null, reason: "The suggestion was much longer than the post.", model };

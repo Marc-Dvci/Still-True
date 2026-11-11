@@ -33,7 +33,8 @@ const SCENARIOS: ScenarioSource[] = [
     lang: "en",
     latitude: 34.05,
     longitude: -118.24,
-    summary: "The Palisades and Eaton fires spread across Los Angeles County. GDACS raised orange wildfire alerts for the United States on 7 and 8 January.",
+    summary:
+      "The Palisades and Eaton fires spread across Los Angeles County. GDACS raised orange wildfire alerts for the United States on 7 and 8 January.",
     gdacs: "la-wildfires-2025-01.json",
     news: ["2025_January_8"],
     weather: "archive-los-angeles-2025-01-08.json",
@@ -48,7 +49,8 @@ const SCENARIOS: ScenarioSource[] = [
     lang: "en",
     latitude: 39.47,
     longitude: -0.38,
-    summary: "Torrential rain flooded the Valencia region on 29 October. GDACS raised an orange flood alert for Spain from 27 October.",
+    summary:
+      "Torrential rain flooded the Valencia region on 29 October. GDACS raised an orange flood alert for Spain from 27 October.",
     gdacs: "spain-flood-2024-10.json",
     news: ["2024_October_29", "2024_October_30"],
     weather: "archive-valencia-2024-10-29.json",
@@ -63,7 +65,8 @@ const SCENARIOS: ScenarioSource[] = [
     lang: "en",
     latitude: 41.01,
     longitude: 28.98,
-    summary: "A magnitude 7.8 earthquake struck southern Türkiye before dawn on 6 February. GDACS raised a red earthquake alert.",
+    summary:
+      "A magnitude 7.8 earthquake struck southern Türkiye before dawn on 6 February. GDACS raised a red earthquake alert.",
     gdacs: "turkey-eq-2023-02.json",
     news: ["2023_February_6"],
     weather: "archive-istanbul-2023-02-06.json",
@@ -91,17 +94,32 @@ const SCENARIOS: ScenarioSource[] = [
     lang: "fr",
     latitude: 48.86,
     longitude: 2.35,
-    summary: "France remembers the victims of the 13 November 2015 attacks. In 2026 the anniversary falls on a Friday the 13th.",
+    summary:
+      "France remembers the victims of the 13 November 2015 attacks. In 2026 the anniversary falls on a Friday the 13th.",
   },
 ];
 
-const fixture = (path: string) => JSON.parse(readFileSync(new URL(`../test/fixtures/${path}`, import.meta.url), "utf8")) as unknown;
+const fixture = (path: string) =>
+  JSON.parse(readFileSync(new URL(`../test/fixtures/${path}`, import.meta.url), "utf8")) as unknown;
 
 const out = SCENARIOS.map((s) => {
   const gdacs = s.gdacs ? parseGdacs(fixture(`gdacs/${s.gdacs}`)) : [];
   const news = (s.news ?? []).flatMap((day) => {
     const wikitext = (fixture(`wikipedia/${day}.json`) as { parse: { wikitext: string } }).parse.wikitext;
-    const months: Record<string, string> = { January: "01", February: "02", March: "03", April: "04", May: "05", June: "06", July: "07", August: "08", September: "09", October: "10", November: "11", December: "12" };
+    const months: Record<string, string> = {
+      January: "01",
+      February: "02",
+      March: "03",
+      April: "04",
+      May: "05",
+      June: "06",
+      July: "07",
+      August: "08",
+      September: "09",
+      October: "10",
+      November: "11",
+      December: "12",
+    };
     const [y, m, d] = day.split("_");
     return parseCurrentEvents(wikitext, `${y}-${months[m as string]}-${String(d).padStart(2, "0")}`);
   });
@@ -120,4 +138,11 @@ const out = SCENARIOS.map((s) => {
 });
 
 writeFileSync(new URL("../data/drills.json", import.meta.url), `${JSON.stringify({ scenarios: out })}\n`);
-console.log(out.map((s) => `${s.id}: ${s.gdacs.length} alerts, ${s.news.length} news items, weather ${s.weather ? "yes" : "no"}`).join("\n"));
+console.log(
+  out
+    .map(
+      (s) =>
+        `${s.id}: ${s.gdacs.length} alerts, ${s.news.length} news items, weather ${s.weather ? "yes" : "no"}`,
+    )
+    .join("\n"),
+);

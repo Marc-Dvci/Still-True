@@ -8,3 +8,6 @@ test/fixtures
 data
 package-lock.json
 *.md
+.scratch
+web/public
+dist

@@ -17,7 +17,11 @@ export function renderDrill(host: HTMLElement, result: DrillResponse): void {
   }
   host.replaceChildren(
     el("p", { class: "eyebrow" }, `${result.scenario.place} · ${result.scenario.date}`),
-    el("h3", {}, `${result.counts.hold} held · ${result.counts.review} for review · ${result.counts.still_true} still true`),
+    el(
+      "h3",
+      {},
+      `${result.counts.hold} held · ${result.counts.review} for review · ${result.counts.still_true} still true`,
+    ),
     el("p", { class: "muted" }, `${result.scenario.summary} Sources: ${result.scenario.sources.join("; ")}.`),
     boardHead(),
     list,
@@ -48,8 +52,21 @@ export async function renderScenarioPicker(
     const button = el(
       "button",
       { type: "button", "aria-pressed": "false" },
-      el("span", { class: "scenario-date" }, new Date(`${s.date}T12:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })),
-      el("span", {}, el("span", { class: "scenario-title" }, `${s.title}`), el("span", { class: "scenario-summary" }, s.summary)),
+      el(
+        "span",
+        { class: "scenario-date" },
+        new Date(`${s.date}T12:00:00Z`).toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        }),
+      ),
+      el(
+        "span",
+        {},
+        el("span", { class: "scenario-title" }, `${s.title}`),
+        el("span", { class: "scenario-summary" }, s.summary),
+      ),
       el("span", { class: "muted" }, s.place),
     );
     button.addEventListener("click", () => void choose(s.id, button));
@@ -57,7 +74,10 @@ export async function renderScenarioPicker(
     listHost.append(el("li", {}, button));
   }
   const wanted = initial ?? location.hash.slice(1);
-  const index = Math.max(0, all.findIndex((s) => s.id === wanted));
+  const index = Math.max(
+    0,
+    all.findIndex((s) => s.id === wanted),
+  );
   const first = buttons[index];
   if (first && all[index]) await choose(all[index].id, first);
 }

@@ -4,7 +4,14 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { checkPost } from "../src/core/check";
 import { remembranceDays } from "../src/core/remembrance";
-import type { CheckContext, DisasterEvent, FindingCode, PageFacts, PostUnderCheck, Verdict } from "../src/core/types";
+import type {
+  CheckContext,
+  DisasterEvent,
+  FindingCode,
+  PageFacts,
+  PostUnderCheck,
+  Verdict,
+} from "../src/core/types";
 
 interface Case {
   id: string;
@@ -13,7 +20,15 @@ interface Case {
     country: string;
     pages?: Record<string, PageFacts>;
     weather?: CheckContext["weather"];
-    gdacs?: { type: DisasterEvent["type"]; alert: DisasterEvent["alert"]; country: string; iso3?: string; name: string; from: string; to?: string }[];
+    gdacs?: {
+      type: DisasterEvent["type"];
+      alert: DisasterEvent["alert"];
+      country: string;
+      iso3?: string;
+      name: string;
+      from: string;
+      to?: string;
+    }[];
     news?: CheckContext["news"];
   };
   expect: { verdict: Verdict; codes: FindingCode[] };
@@ -63,7 +78,14 @@ export interface EvalReport {
   falseFlagsOnHealthy: number;
   missedHolds: number;
   codes: Record<string, CodeScore>;
-  errors: { id: string; expected: string[]; got: string[]; verdict: string; expectedVerdict: string; why?: string }[];
+  errors: {
+    id: string;
+    expected: string[];
+    got: string[];
+    verdict: string;
+    expectedVerdict: string;
+    why?: string;
+  }[];
 }
 
 export function evaluate(split: string): EvalReport {
@@ -90,7 +112,15 @@ export function evaluate(split: string): EvalReport {
     if (c.expect.verdict === "hold" && result.verdict !== "hold") missedHolds += 1;
     if (c.expect.verdict === "still_true" && result.verdict !== "still_true") falseFlagsOnHealthy += 1;
     if (JSON.stringify(got) === JSON.stringify(expected)) exact += 1;
-    else errors.push({ id: c.id, expected, got, verdict: result.verdict, expectedVerdict: c.expect.verdict, why: c.why });
+    else
+      errors.push({
+        id: c.id,
+        expected,
+        got,
+        verdict: result.verdict,
+        expectedVerdict: c.expect.verdict,
+        why: c.why,
+      });
   }
   for (const score of Object.values(codes)) {
     score.precision = score.tp + score.fp === 0 ? 1 : score.tp / (score.tp + score.fp);
@@ -118,11 +148,16 @@ if (isMain) {
   writeFileSync(new URL(`./results/${split}.json`, import.meta.url), `${JSON.stringify(report, null, 2)}\n`);
   const pct = (x: number) => `${(100 * x).toFixed(1)} %`;
   console.log(`${split}: ${report.cases} cases (${report.healthy} healthy)`);
-  console.log(`verdict accuracy ${pct(report.verdictAccuracy)} · exact codes ${pct(report.exactCodeMatch)} · false holds ${report.falseHolds} · flags on healthy ${report.falseFlagsOnHealthy} · missed holds ${report.missedHolds}`);
+  console.log(
+    `verdict accuracy ${pct(report.verdictAccuracy)} · exact codes ${pct(report.exactCodeMatch)} · false holds ${report.falseHolds} · flags on healthy ${report.falseFlagsOnHealthy} · missed holds ${report.missedHolds}`,
+  );
   for (const [code, s] of Object.entries(report.codes)) {
-    console.log(`${code.padEnd(28)} tp ${String(s.tp).padStart(3)} fp ${String(s.fp).padStart(3)} fn ${String(s.fn).padStart(3)}  P ${pct(s.precision)}  R ${pct(s.recall)}`);
+    console.log(
+      `${code.padEnd(28)} tp ${String(s.tp).padStart(3)} fp ${String(s.fp).padStart(3)} fn ${String(s.fn).padStart(3)}  P ${pct(s.precision)}  R ${pct(s.recall)}`,
+    );
   }
   if (process.argv.includes("--errors")) {
-    for (const e of report.errors) console.log(`  ${e.id}: expected [${e.expected}] got [${e.got}] (${e.why ?? ""})`);
+    for (const e of report.errors)
+      console.log(`  ${e.id}: expected [${e.expected}] got [${e.got}] (${e.why ?? ""})`);
   }
 }

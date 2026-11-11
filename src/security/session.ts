@@ -41,7 +41,11 @@ export async function sessionCookie(secret: string, accountId: string, now = Dat
   return cookie(SESSION_COOKIE, await sign(secret, { accountId, exp }), SESSION_DAYS * 86_400);
 }
 
-export async function readSession(request: Request, secret: string, now = Date.now()): Promise<Session | null> {
+export async function readSession(
+  request: Request,
+  secret: string,
+  now = Date.now(),
+): Promise<Session | null> {
   const raw = readCookie(request, SESSION_COOKIE);
   if (!raw) return null;
   const session = await verify<Session>(secret, raw);

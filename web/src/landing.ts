@@ -29,7 +29,8 @@ async function heroBoard(): Promise<void> {
   host.replaceChildren(boardHead(), list);
   cascade(list);
   const caption = document.getElementById("board-caption");
-  if (caption) caption.textContent = `A small business's day of posts, replayed on ${result.scenario.title.toLowerCase()} day`;
+  if (caption)
+    caption.textContent = `A small business's day of posts, replayed on ${result.scenario.title.toLowerCase()} day`;
   const source = document.getElementById("hero-source");
   if (source) {
     source.textContent = `${result.scenario.summary} ${result.counts.hold} held, ${result.counts.review} for review, ${result.counts.still_true} still true. Open a row to see why.`;

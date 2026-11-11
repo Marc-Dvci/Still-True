@@ -82,26 +82,37 @@ const PAGES: Record<string, ProductSpec | EventSpec> = {
 export const DEMO_PATHS = Object.keys(PAGES);
 
 function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c);
+  return value.replace(
+    /[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c,
+  );
 }
 
 function localIso(dateKey: string, hour: number): string {
   // ISO with the Paris offset, as ticketing sites publish startDate.
   const instant = localToInstant(dateKey, hour, 0, TZ);
   const parts = localParts(instant, TZ);
-  const offsetMinutes = Math.round((Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute) - instant.getTime()) / 60_000);
+  const offsetMinutes = Math.round(
+    (Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute) - instant.getTime()) / 60_000,
+  );
   const sign = offsetMinutes >= 0 ? "+" : "-";
   const abs = Math.abs(offsetMinutes);
   return `${dateKey}T${String(hour).padStart(2, "0")}:00:00${sign}${String(Math.floor(abs / 60)).padStart(2, "0")}:${String(abs % 60).padStart(2, "0")}`;
 }
 
-export function demoEventDates(path: string, now: number): { startDate: string; previousStartDate?: string } | null {
+export function demoEventDates(
+  path: string,
+  now: number,
+): { startDate: string; previousStartDate?: string } | null {
   const spec = PAGES[path];
   if (!spec || spec.kind !== "event") return null;
   const today = localParts(now, TZ).date;
   const original = addDays(today, spec.inDays);
   if (spec.movedByDays) {
-    return { startDate: localIso(addDays(original, spec.movedByDays), spec.hour), previousStartDate: localIso(original, spec.hour) };
+    return {
+      startDate: localIso(addDays(original, spec.movedByDays), spec.hour),
+      previousStartDate: localIso(original, spec.hour),
+    };
   }
   return { startDate: localIso(original, spec.hour) };
 }
@@ -138,7 +149,12 @@ export function renderDemoPage(path: string, now: number): DemoPage | null {
       eventStatus: `https://schema.org/${spec.status}`,
       location: { "@type": "Place", name: "Salle Rivage", address: "Strasbourg" },
     };
-    const label = { EventScheduled: "On sale", EventPostponed: "Postponed, new date to come", EventCancelled: "Cancelled", EventRescheduled: "Moved to a new date" }[spec.status];
+    const label = {
+      EventScheduled: "On sale",
+      EventPostponed: "Postponed, new date to come",
+      EventCancelled: "Cancelled",
+      EventRescheduled: "Moved to a new date",
+    }[spec.status];
     facts = `<p class="date">${escapeHtml(new Date(dates.startDate).toLocaleString("en-GB", { timeZone: TZ, dateStyle: "full", timeStyle: "short" }))}</p><p class="stock ${spec.status === "EventScheduled" ? "in" : "out"}">${label}</p>`;
   }
   const brand = spec.kind === "product" ? "Atelier Nord" : "Salle Rivage";

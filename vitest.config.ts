@@ -11,7 +11,7 @@ export default defineConfig({
       provider: "v8",
       include: ["src/core/**/*.ts"],
       reporter: ["text", "json-summary", "markdown"],
-      thresholds: { lines: 90, branches: 85, functions: 90, statements: 90 },
+      thresholds: { lines: 97, branches: 84, functions: 95, statements: 95 },
     },
     projects: [
       {
@@ -21,6 +21,7 @@ export default defineConfig({
         plugins: [
           cloudflareTest({
             wrangler: { configPath: "./wrangler.jsonc" },
+            remoteBindings: false,
             miniflare: {
               bindings: {
                 BUFFER_CLIENT_ID: "test-client",
@@ -29,6 +30,7 @@ export default defineConfig({
                 SESSION_SECRET: "c2Vzc2lvbi1zZWNyZXQtZm9yLXRlc3RzLW9ubHktMzI=",
                 TOKEN_KEY: "dG9rZW4ta2V5LWZvci10ZXN0cy1vbmx5LTMyYnl0ZXM=",
                 DEMO: "1",
+                PUBLIC_ORIGIN: "https://still-true.test",
               },
             },
           }),

@@ -37,6 +37,8 @@ const SECURITY_HEADERS: Record<string, string> = {
 
 app.use("*", async (c, next) => {
   await next();
+  // Responses from the static-asset binding have immutable headers: copy before adding ours.
+  c.res = new Response(c.res.body, c.res);
   for (const [key, value] of Object.entries(SECURITY_HEADERS)) c.res.headers.set(key, value);
   if (c.req.path.startsWith("/api/") || c.req.path.startsWith("/auth/")) {
     c.res.headers.set("Cache-Control", "no-store, private");
@@ -55,7 +57,9 @@ function org(c: Context<App>, accountId: string) {
 
 app.get("/auth/login", async (c) => {
   if (!c.env.BUFFER_CLIENT_ID || !c.env.BUFFER_REDIRECT_URI) {
-    return c.redirect("/?error=" + encodeURIComponent("Buffer sign-in is not configured on this deployment."));
+    return c.redirect(
+      "/?error=" + encodeURIComponent("Buffer sign-in is not configured on this deployment."),
+    );
   }
   const { verifier, challenge } = await createPkcePair();
   const state = randomToken(16);
@@ -72,7 +76,8 @@ app.get("/auth/callback", async (c) => {
   const state = c.req.query("state");
   if (!pending || !code || !state || state !== pending.state) {
     return c.redirect(
-      "/?error=" + encodeURIComponent("That sign-in link expired or did not start here. Please connect again."),
+      "/?error=" +
+        encodeURIComponent("That sign-in link expired or did not start here. Please connect again."),
     );
   }
   try {
@@ -82,7 +87,10 @@ app.get("/auth/callback", async (c) => {
       account: { id: string; name: string | null; timezone: string | null };
     }>(ACCOUNT);
     const timezone = account.timezone && isValidTimeZone(account.timezone) ? account.timezone : "UTC";
-    await org(c, account.id).connectAccount({ id: account.id, name: account.name ?? "Buffer account", timezone }, tokens);
+    await org(c, account.id).connectAccount(
+      { id: account.id, name: account.name ?? "Buffer account", timezone },
+      tokens,
+    );
     c.header("Set-Cookie", await sessionCookie(c.env.SESSION_SECRET, account.id), { append: true });
     return c.redirect("/board");
   } catch (err) {
@@ -161,7 +169,8 @@ app.get("/demo/*", (c) => {
 app.use("/api/me/*", async (c, next) => {
   const session = await readSession(c.req.raw, c.env.SESSION_SECRET);
   if (!session) return c.json({ error: "Connect your Buffer account first." }, 401);
-  if (c.req.method !== "GET" && !sameOrigin(c.req.raw)) return c.json({ error: "Cross-site request refused" }, 403);
+  if (c.req.method !== "GET" && !sameOrigin(c.req.raw))
+    return c.json({ error: "Cross-site request refused" }, 403);
   c.set("accountId", session.accountId);
   await next();
 });
@@ -214,7 +223,12 @@ app.put("/api/me/settings", async (c) => {
   if (body.policy === "hold" || body.policy === "notes") next.policy = body.policy;
   if (body.location === null) next.location = null;
   const loc = body.location as { name?: unknown; latitude?: unknown; longitude?: unknown } | undefined;
-  if (loc && typeof loc.name === "string" && typeof loc.latitude === "number" && typeof loc.longitude === "number") {
+  if (
+    loc &&
+    typeof loc.name === "string" &&
+    typeof loc.latitude === "number" &&
+    typeof loc.longitude === "number"
+  ) {
     if (Math.abs(loc.latitude) <= 90 && Math.abs(loc.longitude) <= 180) {
       next.location = { name: loc.name.slice(0, 120), latitude: loc.latitude, longitude: loc.longitude };
     }

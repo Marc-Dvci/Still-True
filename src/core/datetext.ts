@@ -3,27 +3,83 @@ import { addDays, daysBetween, isRealDate, toDateKey, weekdayOf } from "./time";
 import { fold, maskUrls, type Match } from "./text";
 
 const WEEKDAY_WORDS: [string, number, "en" | "fr", boolean][] = [
-  ["monday", 1, "en", true], ["tuesday", 2, "en", true], ["wednesday", 3, "en", true], ["thursday", 4, "en", true],
-  ["friday", 5, "en", true], ["saturday", 6, "en", true], ["sunday", 7, "en", true],
-  ["mon", 1, "en", false], ["tues", 2, "en", false], ["tue", 2, "en", false], ["wed", 3, "en", false],
-  ["thurs", 4, "en", false], ["thur", 4, "en", false], ["thu", 4, "en", false], ["fri", 5, "en", false],
-  ["sat", 6, "en", false], ["sun", 7, "en", false],
-  ["lundi", 1, "fr", true], ["mardi", 2, "fr", true], ["mercredi", 3, "fr", true], ["jeudi", 4, "fr", true],
-  ["vendredi", 5, "fr", true], ["samedi", 6, "fr", true], ["dimanche", 7, "fr", true],
+  ["monday", 1, "en", true],
+  ["tuesday", 2, "en", true],
+  ["wednesday", 3, "en", true],
+  ["thursday", 4, "en", true],
+  ["friday", 5, "en", true],
+  ["saturday", 6, "en", true],
+  ["sunday", 7, "en", true],
+  ["mon", 1, "en", false],
+  ["tues", 2, "en", false],
+  ["tue", 2, "en", false],
+  ["wed", 3, "en", false],
+  ["thurs", 4, "en", false],
+  ["thur", 4, "en", false],
+  ["thu", 4, "en", false],
+  ["fri", 5, "en", false],
+  ["sat", 6, "en", false],
+  ["sun", 7, "en", false],
+  ["lundi", 1, "fr", true],
+  ["mardi", 2, "fr", true],
+  ["mercredi", 3, "fr", true],
+  ["jeudi", 4, "fr", true],
+  ["vendredi", 5, "fr", true],
+  ["samedi", 6, "fr", true],
+  ["dimanche", 7, "fr", true],
 ];
 const MONTH_WORDS: [string, number][] = [
-  ["january", 1], ["february", 2], ["march", 3], ["april", 4], ["may", 5], ["june", 6], ["july", 7],
-  ["august", 8], ["september", 9], ["october", 10], ["november", 11], ["december", 12],
-  ["janvier", 1], ["fevrier", 2], ["mars", 3], ["avril", 4], ["mai", 5], ["juin", 6], ["juillet", 7],
-  ["aout", 8], ["septembre", 9], ["octobre", 10], ["novembre", 11], ["decembre", 12],
-  ["sept", 9], ["janv", 1], ["fevr", 2], ["juil", 7], ["avr", 4],
-  ["jan", 1], ["feb", 2], ["mar", 3], ["apr", 4], ["jun", 6], ["jul", 7], ["aug", 8], ["sep", 9], ["oct", 10],
-  ["nov", 11], ["dec", 12],
+  ["january", 1],
+  ["february", 2],
+  ["march", 3],
+  ["april", 4],
+  ["may", 5],
+  ["june", 6],
+  ["july", 7],
+  ["august", 8],
+  ["september", 9],
+  ["october", 10],
+  ["november", 11],
+  ["december", 12],
+  ["janvier", 1],
+  ["fevrier", 2],
+  ["mars", 3],
+  ["avril", 4],
+  ["mai", 5],
+  ["juin", 6],
+  ["juillet", 7],
+  ["aout", 8],
+  ["septembre", 9],
+  ["octobre", 10],
+  ["novembre", 11],
+  ["decembre", 12],
+  ["sept", 9],
+  ["janv", 1],
+  ["fevr", 2],
+  ["juil", 7],
+  ["avr", 4],
+  ["jan", 1],
+  ["feb", 2],
+  ["mar", 3],
+  ["apr", 4],
+  ["jun", 6],
+  ["jul", 7],
+  ["aug", 8],
+  ["sep", 9],
+  ["oct", 10],
+  ["nov", 11],
+  ["dec", 12],
 ];
 
-const WEEKDAY_ALT = WEEKDAY_WORDS.map(([w]) => w).sort((a, b) => b.length - a.length).join("|");
-const WEEKDAY_FULL_ALT = WEEKDAY_WORDS.filter((w) => w[3]).map(([w]) => w).join("|");
-const MONTH_ALT = MONTH_WORDS.map(([m]) => m).sort((a, b) => b.length - a.length).join("|");
+const WEEKDAY_ALT = WEEKDAY_WORDS.map(([w]) => w)
+  .sort((a, b) => b.length - a.length)
+  .join("|");
+const WEEKDAY_FULL_ALT = WEEKDAY_WORDS.filter((w) => w[3])
+  .map(([w]) => w)
+  .join("|");
+const MONTH_ALT = MONTH_WORDS.map(([m]) => m)
+  .sort((a, b) => b.length - a.length)
+  .join("|");
 const MONTH_INDEX = new Map(MONTH_WORDS);
 const WEEKDAY_INDEX = new Map(WEEKDAY_WORDS.map(([w, n, lang]) => [w, { n, lang }]));
 
@@ -56,7 +112,13 @@ export function resolveYear(day: number, month: number, dueKey: string): number 
 function weekdayAt(original: string, folded: string, start: number, word: string): WeekdayRef | null {
   const info = WEEKDAY_INDEX.get(word);
   if (!info) return null;
-  return { text: original.slice(start, start + word.length), start, end: start + word.length, value: info.n, lang: info.lang };
+  return {
+    text: original.slice(start, start + word.length),
+    start,
+    end: start + word.length,
+    value: info.n,
+    lang: info.lang,
+  };
 }
 
 export function findDates(text: string, dueKey: string, country = ""): DateRef[] {
@@ -64,7 +126,14 @@ export function findDates(text: string, dueKey: string, country = ""): DateRef[]
   const out: DateRef[] = [];
   const taken: [number, number][] = [];
   const overlaps = (s: number, e: number) => taken.some(([a, b]) => s < b && e > a);
-  const add = (m: RegExpMatchArray, wd: string | undefined, day: number, month: number, yearRaw: string | undefined, lang: "en" | "fr") => {
+  const add = (
+    m: RegExpMatchArray,
+    wd: string | undefined,
+    day: number,
+    month: number,
+    yearRaw: string | undefined,
+    lang: "en" | "fr",
+  ) => {
     const start = m.index ?? 0;
     const end = start + m[0].length;
     if (overlaps(start, end)) return;
@@ -93,7 +162,28 @@ export function findDates(text: string, dueKey: string, country = ""): DateRef[]
   );
   for (const m of folded.matchAll(dayFirst)) {
     const month = MONTH_INDEX.get(m[3] as string) as number;
-    const lang = /[a-z]/.test(m[3] ?? "") && ["janvier", "fevrier", "mars", "avril", "mai", "juin", "juillet", "aout", "septembre", "octobre", "novembre", "decembre", "janv", "fevr", "juil", "avr"].includes(m[3] as string) ? "fr" : "en";
+    const lang =
+      /[a-z]/.test(m[3] ?? "") &&
+      [
+        "janvier",
+        "fevrier",
+        "mars",
+        "avril",
+        "mai",
+        "juin",
+        "juillet",
+        "aout",
+        "septembre",
+        "octobre",
+        "novembre",
+        "decembre",
+        "janv",
+        "fevr",
+        "juil",
+        "avr",
+      ].includes(m[3] as string)
+        ? "fr"
+        : "en";
     add(m, m[1], Number(m[2]), month, m[4], lang);
   }
   // "Friday, November 14", "Nov 14th, 2026"
@@ -106,7 +196,10 @@ export function findDates(text: string, dueKey: string, country = ""): DateRef[]
     add(m, m[1], Number(m[3]), month, m[4], "en");
   }
   // "14/11", "11/14/2026" (month first in the US)
-  const numeric = new RegExp(`(?:\\b(${WEEKDAY_ALT})\\.?,?\\s+)?\\b(\\d{1,2})/(\\d{1,2})(?:/(\\d{2,4}))?\\b`, "g");
+  const numeric = new RegExp(
+    `(?:\\b(${WEEKDAY_ALT})\\.?,?\\s+)?\\b(\\d{1,2})/(\\d{1,2})(?:/(\\d{2,4}))?\\b`,
+    "g",
+  );
   for (const m of folded.matchAll(numeric)) {
     const a = Number(m[2]);
     const b = Number(m[3]);
@@ -151,7 +244,13 @@ export function findRelative(text: string): RelativeRef[] {
     for (const m of folded.matchAll(pattern)) {
       const start = m.index ?? 0;
       if (out.some((r) => start < r.end && start + m[0].length > r.start)) continue;
-      out.push({ text: text.slice(start, start + m[0].length), start, end: start + m[0].length, offset, kind });
+      out.push({
+        text: text.slice(start, start + m[0].length),
+        start,
+        end: start + m[0].length,
+        offset,
+        kind,
+      });
     }
   }
   return out.sort((a, b) => a.start - b.start);
@@ -186,12 +285,17 @@ export function findTimes(text: string, evening = false): TimeRef[] {
     if ((m[3] ?? "").startsWith("p")) h += 12;
     push(m.index ?? 0, m[0].length, h, Number(m[2] ?? 0));
   }
-  for (const m of folded.matchAll(/\b(\d{1,2})\s?h\s?(\d{2})?\b/g)) push(m.index ?? 0, m[0].length, Number(m[1]), Number(m[2] ?? 0));
-  for (const m of folded.matchAll(/\b(\d{1,2}):(\d{2})\b/g)) push(m.index ?? 0, m[0].length, Number(m[1]), Number(m[2]));
+  for (const m of folded.matchAll(/\b(\d{1,2})\s?h\s?(\d{2})?\b/g))
+    push(m.index ?? 0, m[0].length, Number(m[1]), Number(m[2] ?? 0));
+  for (const m of folded.matchAll(/\b(\d{1,2}):(\d{2})\b/g))
+    push(m.index ?? 0, m[0].length, Number(m[1]), Number(m[2]));
   if (evening) {
-    for (const m of folded.matchAll(/\b(?:at|from|a|des|vers)\s+(\d{1,2})\b(?![:h.\d%]|\s?(?:am|pm|h\b|€|\$|£|euro|%))/g)) {
+    for (const m of folded.matchAll(
+      /\b(?:at|from|a|des|vers)\s+(\d{1,2})\b(?![:h.\d%]|\s?(?:am|pm|h\b|€|\$|£|euro|%))/g,
+    )) {
       const h = Number(m[1]);
-      if (h >= 1 && h <= 11) push((m.index ?? 0) + m[0].indexOf(m[1] as string), (m[1] as string).length, h + 12, 0);
+      if (h >= 1 && h <= 11)
+        push((m.index ?? 0) + m[0].indexOf(m[1] as string), (m[1] as string).length, h + 12, 0);
     }
   }
   return out.sort((a, b) => a.start - b.start);

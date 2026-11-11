@@ -3,11 +3,32 @@ import { boardHead, cascade, el, renderRow, toast, type Finding, type RowModel }
 import { renderScenarioPicker } from "./drill-ui";
 
 const COUNTRIES: [string, string][] = [
-  ["AU", "Australia"], ["AT", "Austria"], ["BE", "Belgium"], ["BR", "Brazil"], ["CA", "Canada"], ["DK", "Denmark"],
-  ["FI", "Finland"], ["FR", "France"], ["DE", "Germany"], ["IN", "India"], ["IE", "Ireland"], ["IT", "Italy"],
-  ["JP", "Japan"], ["MX", "Mexico"], ["NL", "Netherlands"], ["NZ", "New Zealand"], ["NO", "Norway"], ["PL", "Poland"],
-  ["PT", "Portugal"], ["ZA", "South Africa"], ["ES", "Spain"], ["SE", "Sweden"], ["CH", "Switzerland"], ["TR", "Türkiye"],
-  ["GB", "United Kingdom"], ["US", "United States"],
+  ["AU", "Australia"],
+  ["AT", "Austria"],
+  ["BE", "Belgium"],
+  ["BR", "Brazil"],
+  ["CA", "Canada"],
+  ["DK", "Denmark"],
+  ["FI", "Finland"],
+  ["FR", "France"],
+  ["DE", "Germany"],
+  ["IN", "India"],
+  ["IE", "Ireland"],
+  ["IT", "Italy"],
+  ["JP", "Japan"],
+  ["MX", "Mexico"],
+  ["NL", "Netherlands"],
+  ["NZ", "New Zealand"],
+  ["NO", "Norway"],
+  ["PL", "Poland"],
+  ["PT", "Portugal"],
+  ["ZA", "South Africa"],
+  ["ES", "Spain"],
+  ["SE", "Sweden"],
+  ["CH", "Switzerland"],
+  ["TR", "Türkiye"],
+  ["GB", "United Kingdom"],
+  ["US", "United States"],
 ];
 
 let state: api.BoardState | null = null;
@@ -49,8 +70,10 @@ async function act(promise: Promise<{ ok?: boolean; message?: string }>, fallbac
 }
 
 const actions = {
-  onFix: (row: RowModel, finding: Finding) => act(api.applyFix(row.id, finding.code), "Fix applied in Buffer."),
-  onDismiss: (row: RowModel, finding: Finding) => act(api.dismiss(row.id, finding.code), "Dismissed for this post."),
+  onFix: (row: RowModel, finding: Finding) =>
+    act(api.applyFix(row.id, finding.code), "Fix applied in Buffer."),
+  onDismiss: (row: RowModel, finding: Finding) =>
+    act(api.dismiss(row.id, finding.code), "Dismissed for this post."),
   onRelease: (row: RowModel) => act(api.release(row.id), "Back in the queue."),
   onSuggest: async (row: RowModel, finding: Finding, slot: HTMLElement) => {
     slot.replaceChildren(el("p", { class: "muted" }, "Writing a suggestion…"));
@@ -65,7 +88,11 @@ const actions = {
         void navigator.clipboard?.writeText(result.text as string);
         toast("Copied. Paste it into the post in Buffer.");
       });
-      slot.replaceChildren(el("p", { class: "suggestion" }, result.text), el("p", { class: "muted" }, result.reason), copy);
+      slot.replaceChildren(
+        el("p", { class: "suggestion" }, result.text),
+        el("p", { class: "muted" }, result.reason),
+        copy,
+      );
     } catch (error) {
       slot.replaceChildren(el("p", { class: "muted" }, (error as Error).message));
     }
@@ -86,7 +113,8 @@ function render(open = new Set<string>()): void {
     el("span", { class: "flap review" }, `${counts.review} review`),
     el("span", { class: "flap" }, `${counts.still_true} still true`),
   );
-  $("cycle").textContent = `Last check ${since(state.budget.lastCycleAt)}${state.budget.nextCycleAt ? `, next ${new Date(state.budget.nextCycleAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}` : ""} · ${state.budget.requestsToday} Buffer requests today`;
+  $("cycle").textContent =
+    `Last check ${since(state.budget.lastCycleAt)}${state.budget.nextCycleAt ? `, next ${new Date(state.budget.nextCycleAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}` : ""} · ${state.budget.requestsToday} Buffer requests today`;
 
   const host = $("board");
   if (state.posts.length === 0) {
@@ -95,7 +123,11 @@ function render(open = new Set<string>()): void {
         "div",
         { class: "empty" },
         el("h2", {}, "Nothing scheduled in the next seven days"),
-        el("p", {}, "Still True checks scheduled posts and drafts that have a time. Schedule something in Buffer, or add the sample drafts below to see each check work."),
+        el(
+          "p",
+          {},
+          "Still True checks scheduled posts and drafts that have a time. Schedule something in Buffer, or add the sample drafts below to see each check work.",
+        ),
       ),
     );
   } else {
@@ -107,32 +139,50 @@ function render(open = new Set<string>()): void {
 
   const channels = $("sample-channel") as HTMLSelectElement;
   const known = new Map<string, string>();
-  for (const p of state.posts) if (p.channel) known.set(p.channel.id, `${p.channel.name} (${p.channel.service})`);
-  for (const c of (state as api.BoardState & { channels?: { id: string; name: string; service: string }[] }).channels ?? []) {
+  for (const p of state.posts)
+    if (p.channel) known.set(p.channel.id, `${p.channel.name} (${p.channel.service})`);
+  for (const c of (state as api.BoardState & { channels?: { id: string; name: string; service: string }[] })
+    .channels ?? []) {
     known.set(c.id, `${c.name} (${c.service})`);
   }
   channels.replaceChildren(...[...known].map(([id, name]) => el("option", { value: id }, name)));
   $("add-samples").toggleAttribute("disabled", known.size === 0);
-  if (known.size === 0) channels.replaceChildren(el("option", { value: "" }, "Connect a channel in Buffer first"));
+  if (known.size === 0)
+    channels.replaceChildren(el("option", { value: "" }, "Connect a channel in Buffer first"));
 
   const ledger = $("ledger");
   ledger.replaceChildren(
-    ...state.ledger.slice(0, 12).map((e) =>
-      el("li", {}, el("div", {}, el("strong", {}, `${e.event.replace(/_/g, " ")} `), el("span", { class: "muted" }, `${new Date(e.at).toLocaleString("en-GB")} · ${e.detail}`))),
-    ),
+    ...state.ledger
+      .slice(0, 12)
+      .map((e) =>
+        el(
+          "li",
+          {},
+          el(
+            "div",
+            {},
+            el("strong", {}, `${e.event.replace(/_/g, " ")} `),
+            el("span", { class: "muted" }, `${new Date(e.at).toLocaleString("en-GB")} · ${e.detail}`),
+          ),
+        ),
+      ),
   );
-  if (state.ledger.length === 0) ledger.replaceChildren(el("li", {}, el("div", { class: "muted" }, "Nothing yet.")));
+  if (state.ledger.length === 0)
+    ledger.replaceChildren(el("li", {}, el("div", { class: "muted" }, "Nothing yet.")));
 
   const country = $("country") as HTMLSelectElement;
   if (!country.options.length) {
-    const list = COUNTRIES.some(([code]) => code === state?.settings.country) ? COUNTRIES : [...COUNTRIES, [state.settings.country, state.settings.country] as [string, string]];
+    const list = COUNTRIES.some(([code]) => code === state?.settings.country)
+      ? COUNTRIES
+      : [...COUNTRIES, [state.settings.country, state.settings.country] as [string, string]];
     country.replaceChildren(...list.map(([code, name]) => el("option", { value: code }, name)));
   }
   country.value = state.settings.country;
   $("place-current").textContent = state.settings.location
     ? `Weather is read for ${state.settings.location.name}.`
     : "No location set: the weather check is off.";
-  for (const input of document.querySelectorAll<HTMLInputElement>('input[name="policy"]')) input.checked = input.value === state.settings.policy;
+  for (const input of document.querySelectorAll<HTMLInputElement>('input[name="policy"]'))
+    input.checked = input.value === state.settings.policy;
 }
 
 async function refresh(animate = true): Promise<void> {
@@ -188,7 +238,8 @@ $("place").addEventListener("input", () => {
 });
 
 $("save-settings").addEventListener("click", async () => {
-  const policy = document.querySelector<HTMLInputElement>('input[name="policy"]:checked')?.value as "hold" | "notes" | undefined;
+  const policy = document.querySelector<HTMLInputElement>('input[name="policy"]:checked')?.value as
+    "hold" | "notes" | undefined;
   const body: Partial<api.Settings> = { country: ($("country") as HTMLSelectElement).value };
   if (policy) body.policy = policy;
   if (pendingLocation !== undefined) body.location = pendingLocation;
@@ -209,7 +260,11 @@ $("add-samples").addEventListener("click", async () => {
   button.disabled = true;
   try {
     const result = await api.createSamples(channelId);
-    toast(result.created ? `${result.created} sample drafts added. Checking them now…` : result.messages.join(" "));
+    toast(
+      result.created
+        ? `${result.created} sample drafts added. Checking them now…`
+        : result.messages.join(" "),
+    );
     state = await api.checkNow();
     render();
   } catch (error) {
@@ -220,7 +275,10 @@ $("add-samples").addEventListener("click", async () => {
 });
 
 $("disconnect").addEventListener("click", async () => {
-  if (!window.confirm("Disconnect Still True from Buffer and delete everything it stored about your account?")) return;
+  if (
+    !window.confirm("Disconnect Still True from Buffer and delete everything it stored about your account?")
+  )
+    return;
   await api.disconnect().catch(() => null);
   location.href = "/?error=" + encodeURIComponent("Disconnected. Your data at Still True was deleted.");
 });

@@ -63,7 +63,8 @@ export function sentences(text: string): Match[] {
 export const PROMOTIONAL =
   /\b(sales?\b(?! team| rep| manager| department)|on sale|\d+\s?%\s?off|% off|discount|deals?|promo(?:tion)?s?|promo code|coupon|code\s+[a-z0-9]{3,}|buy now|shop now|order now|flash sale|vente flash|giveaway|win an?\b|free shipping|limited time|half price|2 for 1|two for one|bogo|black friday|cyber monday|clearance|special offer|soldes|reduction|remise|offre speciale|bon plan|jeu concours|gagnez|a gagner|code promo|livraison offerte|destockage|rebajas|oferta|descuento|rabatt|angebot)\b|-\s?\d+\s?%|\b\d+\s?%\s?(?:de reduction|de remise|off|discount)/;
 
-export const PLAYFUL = /(\u{1F389}|\u{1F973}|\u{1F602}|\u{1F923}|\u{1F38A}|\u{1F37E}|\u{1F61C}|\u{1F60E}|\u{1F483}|\u{1F57A})|\b(party|partying|let'?s celebrate|celebrat(?:e|ion|ing)|woo+hoo+|yay+|lol|fiesta|c'?est la fete|on fait la fete|faire la fete|soiree dansante|happy hour)\b/u;
+export const PLAYFUL =
+  /(\u{1F389}|\u{1F973}|\u{1F602}|\u{1F923}|\u{1F38A}|\u{1F37E}|\u{1F61C}|\u{1F60E}|\u{1F483}|\u{1F57A})|\b(party|partying|let'?s celebrate|celebrat(?:e|ion|ing)|woo+hoo+|yay+|lol|fiesta|c'?est la fete|on fait la fete|faire la fete|soiree dansante|happy hour)\b/u;
 
 export const SUPPORTIVE =
   /\b(thoughts are with|our thoughts|our hearts|hearts go out|thinking of|praying|prayers|stay safe|be safe|donat(?:e|ion|ions|ing)|relief fund|relief effort|for (?:the )?(?:flood|fire|storm|earthquake|hurricane) relief|fundrais\w*|solidarity|condolences|in memory|we remember|lest we forget|minute of silence|moment of silence|we will be closed|we are closed|closed today|pensees|soutien|solidarite|nos dons|faire un don|collecte|condoleances|hommage|en memoire|minute de silence|nous serons fermes|ferme aujourd'?hui|recueillement)\b/;

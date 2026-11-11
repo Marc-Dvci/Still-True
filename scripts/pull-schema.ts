@@ -20,6 +20,6 @@ if (!response.ok || !body.data) {
   console.error(`Introspection failed: HTTP ${response.status}`, body.errors);
   process.exit(1);
 }
-const sdl = printSchema(buildClientSchema(body.data));
+const sdl = printSchema(buildClientSchema(body.data as IntrospectionQuery));
 writeFileSync(new URL("../schema/buffer.graphql", import.meta.url), `${sdl}\n`);
 console.log(`schema/buffer.graphql: ${sdl.split("\n").length} lines`);

@@ -4,7 +4,6 @@ HTML pages and JSON payloads that the Still True parser runs against. Each file 
 
 Prices are in the units the page uses: decimal strings for most platforms, whole-number strings for Wix, cents for the Shopify `.js` endpoint. `eventStatus` is always the schema.org URL. Offer availability differs by platform: a bare `InStock` on the Eventbrite-shaped pages, `https://schema.org/InStock` or `OutOfStock` on the WooCommerce and Wix shapes.
 
-Not yet written: the Shopify product fixtures (product page, `.js` endpoint, sold-out and variants) and a Squarespace product page. Shopify product URLs answered HTTP 429 for the whole capture, and no live Squarespace product page was found. See `D:\Boulot temp\Buffer\research\R7_PAGE_SHAPES.md`.
 
 | Fixture | Platform modelled | Contents | Real-world shape reproduced |
 |---|---|---|---|
@@ -20,3 +19,7 @@ Not yet written: the Shopify product fixtures (product page, `.js` endpoint, sol
 | `no-structured-data.html` | Plain page, no structured data | Title, description and og/twitter meta only. The visible body text shows a price (`48,00 €`) with no markup. Expected result: no price from structured data. | Plain page with og meta and no ld+json. |
 | `soft-404.html` | Shop homepage (redirect-to-home target) | `Organization`, `WebSite` (`http://schema.org` context, `SearchAction`), and an `ItemList` of three `Product` references with no `offers`. Expected: no price or availability from the ItemList. | Shopify homepage: `http://schema.org` context, `\/`-escaped URLs, `ItemList` of product references without offers. |
 | `malformed-jsonld.html` | Product page with one invalid ld+json block | Block 0 is a `Product` with a trailing comma after the `url` property and after the `offers` object (invalid JSON). Block 1 is a valid `Organization`. Exactly one block fails to parse. | Product JSON-LD with trailing commas, as found on live pages. `@context` `https://schema.org/` with trailing slash. |
+| `shopify-product-instock.html` | Shopify product page (Online Store 2.0 theme) | `Product` JSON-LD from Liquid's `json` filter (escaped slashes), one `Offer` at `49.0` EUR as a number, `http://schema.org/InStock`; `og:price:amount` `49,00`; `ShopifyAnalytics` marker. | Shopify themes' structured data. |
+| `shopify-product-instock.js.json` | Shopify `/products/<handle>.js` | Prices in cents (`4900`), three variants, two `available`. | The public product endpoint every Shopify store serves. |
+| `shopify-product-soldout.html`, `.js.json` | Shopify, sold out | `OutOfStock`; the only variant has `available: false`. | |
+| `shopify-product-variants.html`, `.js.json` | Shopify `ProductGroup` with `hasVariant` | Two variants at `24.00` (out of stock) and `32.00` (in stock). | Shopify's newer `structured_data` filter. |

@@ -38,7 +38,13 @@ export function parseGdacs(json: unknown): DisasterEvent[] {
     if (alert !== "red" && alert !== "orange" && alert !== "green") continue;
     const from = gdacsDate(p.fromdate);
     if (!from) continue;
-    const countries = [...new Set((p.affectedcountries ?? []).map((c) => c.iso2?.toUpperCase()).filter((c): c is string => !!c && c.length === 2))];
+    const countries = [
+      ...new Set(
+        (p.affectedcountries ?? [])
+          .map((c) => c.iso2?.toUpperCase())
+          .filter((c): c is string => !!c && c.length === 2),
+      ),
+    ];
     const key = `${p.eventtype}:${p.eventid ?? p.name}:${from}`;
     if (seen.has(key)) continue;
     seen.add(key);

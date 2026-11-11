@@ -28,9 +28,25 @@ const EVENT_TYPES = new Set([
   "TheaterEvent",
   "VisualArtsEvent",
 ]);
-const PRODUCT_TYPES = new Set(["Product", "ProductGroup", "IndividualProduct", "ProductModel", "Vehicle", "Book"]);
+const PRODUCT_TYPES = new Set([
+  "Product",
+  "ProductGroup",
+  "IndividualProduct",
+  "ProductModel",
+  "Vehicle",
+  "Book",
+]);
 
-const ENTITIES: Record<string, string> = { "&quot;": '"', "&#34;": '"', "&amp;": "&", "&#38;": "&", "&lt;": "<", "&gt;": ">", "&#39;": "'", "&apos;": "'" };
+const ENTITIES: Record<string, string> = {
+  "&quot;": '"',
+  "&#34;": '"',
+  "&amp;": "&",
+  "&#38;": "&",
+  "&lt;": "<",
+  "&gt;": ">",
+  "&#39;": "'",
+  "&apos;": "'",
+};
 
 export function decodeEntities(value: string): string {
   return value
@@ -84,7 +100,10 @@ function types(node: Record<string, unknown>): string[] {
 
 /** "https://schema.org/InStock", "http://schema.org/InStock", "schema:InStock" -> "InStock". */
 export function shortName(value: string): string {
-  return value.replace(/^https?:\/\/schema\.org\//i, "").replace(/^schema:/i, "").trim();
+  return value
+    .replace(/^https?:\/\/schema\.org\//i, "")
+    .replace(/^schema:/i, "")
+    .trim();
 }
 
 /** "59.00", "59,00", 59, "1.299,00", "1,299.00" -> number. */
@@ -139,7 +158,16 @@ function readOffers(offers: unknown): OfferSummary {
   return summary;
 }
 
-const AVAILABLE = new Set(["InStock", "InStoreOnly", "OnlineOnly", "LimitedAvailability", "PreOrder", "PreSale", "BackOrder", "MadeToOrder"]);
+const AVAILABLE = new Set([
+  "InStock",
+  "InStoreOnly",
+  "OnlineOnly",
+  "LimitedAvailability",
+  "PreOrder",
+  "PreSale",
+  "BackOrder",
+  "MadeToOrder",
+]);
 const UNAVAILABLE = new Set(["OutOfStock", "SoldOut", "Discontinued"]);
 
 /** A product is unavailable only when no offer is available. */
@@ -170,11 +198,19 @@ export function eventFromJsonLd(nodes: Record<string, unknown>[]): EventFacts | 
   const event = nodes.find((n) => types(n).some((t) => EVENT_TYPES.has(t)));
   if (!event) return null;
   const str = (v: unknown): string | null => (typeof v === "string" && v.trim() ? v.trim() : null);
+  const name = str(event.name) ? decodeEntities(str(event.name) as string) : null;
+  let status = str(event.eventStatus) ? shortName(str(event.eventStatus) as string) : null;
+  // Some ticketing sites keep eventStatus at EventScheduled and announce the change in the title only
+  // ("Postponed Further date will be announced", "CANCELLED - Pottery night").
+  if ((status === null || status === "EventScheduled") && name) {
+    if (/^\s*(?:cancel+ed|annul[ée]e?s?)\b/i.test(name)) status = "EventCancelled";
+    else if (/^\s*(?:postponed|report[ée]e?s?)\b/i.test(name)) status = "EventPostponed";
+  }
   return {
     startDate: str(event.startDate),
     previousStartDate: str(asArray(event.previousStartDate)[0]),
-    status: str(event.eventStatus) ? shortName(str(event.eventStatus) as string) : null,
-    name: str(event.name) ? decodeEntities(str(event.name) as string) : null,
+    status,
+    name,
   };
 }
 
@@ -201,7 +237,8 @@ export function productFromMeta(html: string): ProductFacts | null {
 
 export function metaAvailability(value: string): string {
   const v = value.toLowerCase().replace(/[\s_-]/g, "");
-  if (["instock", "available", "in", "preorder"].includes(v)) return v === "preorder" ? "PreOrder" : "InStock";
+  if (["instock", "available", "in", "preorder"].includes(v))
+    return v === "preorder" ? "PreOrder" : "InStock";
   if (["outofstock", "oos", "soldout", "unavailable"].includes(v)) return "OutOfStock";
   if (v === "discontinued") return "Discontinued";
   return shortName(value);
@@ -215,7 +252,9 @@ export function productFromShopifyJs(json: unknown): ProductFacts | null {
   const cents = variants.map((v) => v.price).filter((p): p is number => typeof p === "number");
   if (cents.length === 0 && typeof product.price === "number") cents.push(product.price);
   if (cents.length === 0) return null;
-  const anyAvailable = variants.length ? variants.some((v) => v.available === true) : product.available === true;
+  const anyAvailable = variants.length
+    ? variants.some((v) => v.available === true)
+    : product.available === true;
   return {
     prices: uniqueSorted(cents.map((c) => Math.round(c) / 100)),
     currency: null,
@@ -272,7 +311,11 @@ export function parsePage(html: string): ParsedPage {
 /** Shopify's endpoint knows exact variant prices and stock; JSON-LD keeps the currency. */
 export function mergeShopify(page: ProductFacts | null, shopify: ProductFacts | null): ProductFacts | null {
   if (!shopify) return page;
-  return { ...shopify, currency: page?.currency ?? shopify.currency ?? null, name: shopify.name ?? page?.name ?? null };
+  return {
+    ...shopify,
+    currency: page?.currency ?? shopify.currency ?? null,
+    name: shopify.name ?? page?.name ?? null,
+  };
 }
 
 function uniqueSorted(values: number[]): number[] {

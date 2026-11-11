@@ -23,7 +23,10 @@ const TOOL = {
       text: { type: "string", description: "The post text." },
       due_at: { type: "string", description: "When it will go out, ISO 8601 with offset." },
       timezone: { type: "string", description: "IANA timezone of the channel, e.g. Europe/Paris." },
-      country: { type: "string", description: "ISO 3166-1 alpha-2 code of the audience. Defaults from the timezone." },
+      country: {
+        type: "string",
+        description: "ISO 3166-1 alpha-2 code of the audience. Defaults from the timezone.",
+      },
       created_at: { type: "string", description: "When the post was written (ISO 8601). Defaults to now." },
       latitude: { type: "number", description: "Business location, for the weather check." },
       longitude: { type: "number", description: "Business location, for the weather check." },
@@ -51,10 +54,14 @@ function fail(id: RpcRequest["id"], code: number, message: string): unknown {
 
 export async function runCheckTool(args: Record<string, unknown>, env: Env, now = Date.now()) {
   const text = typeof args.text === "string" ? args.text.slice(0, 5_000) : "";
-  const dueAt = typeof args.due_at === "string" && !Number.isNaN(Date.parse(args.due_at)) ? args.due_at : null;
+  const dueAt =
+    typeof args.due_at === "string" && !Number.isNaN(Date.parse(args.due_at)) ? args.due_at : null;
   const timezone = typeof args.timezone === "string" && isValidTimeZone(args.timezone) ? args.timezone : null;
   if (!text || !dueAt || !timezone) {
-    return { isError: true, content: [{ type: "text", text: "text, due_at (ISO 8601) and a valid IANA timezone are required." }] };
+    return {
+      isError: true,
+      content: [{ type: "text", text: "text, due_at (ISO 8601) and a valid IANA timezone are required." }],
+    };
   }
   const country =
     typeof args.country === "string" && /^[A-Za-z]{2}$/.test(args.country)
@@ -66,14 +73,33 @@ export async function runCheckTool(args: Record<string, unknown>, env: Env, now 
   const world = await env.WORLD.get(env.WORLD.idFromName("world")).snapshot();
   const lat = typeof args.latitude === "number" ? args.latitude : null;
   const lon = typeof args.longitude === "number" ? args.longitude : null;
-  const weather = lat !== null && lon !== null ? await weatherAtDue(lat, lon, dueAt, timezone, { now }) : null;
-  const ctx: CheckContext = { country, pages, weather, gdacs: world.gdacs, news: world.news, remembrance: remembranceDays() };
-  const createdAt = typeof args.created_at === "string" && !Number.isNaN(Date.parse(args.created_at)) ? args.created_at : new Date(now).toISOString();
-  const result = checkPost({ text, dueAt, createdAt, firstSeenDueAt: null, service: "unknown", timezone, links }, ctx);
+  const weather =
+    lat !== null && lon !== null ? await weatherAtDue(lat, lon, dueAt, timezone, { now }) : null;
+  const ctx: CheckContext = {
+    country,
+    pages,
+    weather,
+    gdacs: world.gdacs,
+    news: world.news,
+    remembrance: remembranceDays(),
+  };
+  const createdAt =
+    typeof args.created_at === "string" && !Number.isNaN(Date.parse(args.created_at))
+      ? args.created_at
+      : new Date(now).toISOString();
+  const result = checkPost(
+    { text, dueAt, createdAt, firstSeenDueAt: null, service: "unknown", timezone, links },
+    ctx,
+  );
   const summary =
     result.verdict === "still_true"
       ? "Still true: nothing in the post contradicts the day it goes out."
-      : result.findings.map((f) => `${f.verdict.toUpperCase()} · ${f.title}: ${f.detail}${f.fix ? ` Suggested fix: ${f.fix.summary}.` : ""}`).join("\n");
+      : result.findings
+          .map(
+            (f) =>
+              `${f.verdict.toUpperCase()} · ${f.title}: ${f.detail}${f.fix ? ` Suggested fix: ${f.fix.summary}.` : ""}`,
+          )
+          .join("\n");
   return { content: [{ type: "text", text: summary }], structuredContent: result };
 }
 
@@ -102,7 +128,8 @@ export async function handleMcp(request: Request, env: Env): Promise<Response> {
             protocolVersion: MCP_PROTOCOL,
             capabilities: { tools: { listChanged: false } },
             serverInfo: { name: "still-true", title: "Still True", version: "1.0.0" },
-            instructions: "Call check_post before scheduling a post through Buffer; hold or fix anything that is not still_true.",
+            instructions:
+              "Call check_post before scheduling a post through Buffer; hold or fix anything that is not still_true.",
           }),
         );
         break;
@@ -118,7 +145,9 @@ export async function handleMcp(request: Request, env: Env): Promise<Response> {
           out.push(fail(msg.id, -32602, `Unknown tool: ${String(name)}`));
           break;
         }
-        out.push(reply(msg.id, await runCheckTool((msg.params?.arguments as Record<string, unknown>) ?? {}, env)));
+        out.push(
+          reply(msg.id, await runCheckTool((msg.params?.arguments as Record<string, unknown>) ?? {}, env)),
+        );
         break;
       }
       default:

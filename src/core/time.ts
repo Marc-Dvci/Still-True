@@ -92,7 +92,9 @@ export function addDays(key: string, days: number): string {
 export function daysBetween(fromKey: string, toKey: string): number {
   const a = parseDateKey(fromKey);
   const b = parseDateKey(toKey);
-  return Math.round((Date.UTC(b.year, b.month - 1, b.day) - Date.UTC(a.year, a.month - 1, a.day)) / 86_400_000);
+  return Math.round(
+    (Date.UTC(b.year, b.month - 1, b.day) - Date.UTC(a.year, a.month - 1, a.day)) / 86_400_000,
+  );
 }
 
 /** The UTC instant of a local wall-clock time in `timeZone` (resolves DST by re-checking the offset). */
@@ -109,7 +111,15 @@ export function localToInstant(dateKey: string, hour: number, minute: number, ti
   return new Date(guess);
 }
 
-export const WEEKDAY_NAMES_EN = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+export const WEEKDAY_NAMES_EN = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+];
 export const WEEKDAY_NAMES_FR = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
 export const MONTH_NAMES_EN = [
   "January",

@@ -1,0 +1,57 @@
+{
+ "id": 7700000000001,
+ "title": "Ceramic mug",
+ "handle": "ceramic-mug",
+ "vendor": "Atelier Nord",
+ "type": "",
+ "tags": [],
+ "price": 2400,
+ "price_min": 2400,
+ "price_max": 3200,
+ "available": true,
+ "price_varies": true,
+ "compare_at_price": null,
+ "variants": [
+  {
+   "id": 44010000,
+   "title": "Small",
+   "option1": "Small",
+   "sku": "ceramic-mug-0",
+   "requires_shipping": true,
+   "taxable": true,
+   "featured_image": null,
+   "available": false,
+   "name": "Ceramic mug - Small",
+   "public_title": "Small",
+   "options": [
+    "Small"
+   ],
+   "price": 2400,
+   "weight": 300,
+   "compare_at_price": null,
+   "inventory_management": "shopify",
+   "barcode": ""
+  },
+  {
+   "id": 44010001,
+   "title": "Large",
+   "option1": "Large",
+   "sku": "ceramic-mug-1",
+   "requires_shipping": true,
+   "taxable": true,
+   "featured_image": null,
+   "available": true,
+   "name": "Ceramic mug - Large",
+   "public_title": "Large",
+   "options": [
+    "Large"
+   ],
+   "price": 3200,
+   "weight": 300,
+   "compare_at_price": null,
+   "inventory_management": "shopify",
+   "barcode": ""
+  }
+ ],
+ "url": "/products/ceramic-mug"
+}

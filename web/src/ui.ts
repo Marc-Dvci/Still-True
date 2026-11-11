@@ -85,7 +85,11 @@ export function setFlap(node: HTMLElement, label: string, className: string): vo
     }
     node.textContent = target
       .split("")
-      .map((ch, i) => (ch === " " || i < (frame / frames) * target.length ? ch : GLYPHS[Math.floor(Math.random() * GLYPHS.length)]))
+      .map((ch, i) =>
+        ch === " " || i < (frame / frames) * target.length
+          ? ch
+          : GLYPHS[Math.floor(Math.random() * GLYPHS.length)],
+      )
       .join("");
     window.setTimeout(tick, 45);
   };
@@ -100,8 +104,18 @@ export function flap(label: string, className: string): HTMLElement {
 export function localTime(iso: string | null, timeZone: string): { time: string; day: string } {
   if (!iso) return { time: "--:--", day: "" };
   const date = new Date(iso);
-  const time = new Intl.DateTimeFormat("en-GB", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(date);
-  const day = new Intl.DateTimeFormat("en-GB", { timeZone, weekday: "short", day: "numeric", month: "short" }).format(date);
+  const time = new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(date);
+  const day = new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  }).format(date);
   return { time, day };
 }
 
@@ -150,9 +164,17 @@ function evidenceList(evidence: Evidence[]): HTMLElement {
   for (const item of evidence) {
     dl.append(el("dt", {}, item.label));
     const dd = el("dd", {});
-    if (item.source) dd.append(el("a", { href: item.source, rel: "noopener noreferrer", target: "_blank" }, item.value));
+    if (item.source)
+      dd.append(el("a", { href: item.source, rel: "noopener noreferrer", target: "_blank" }, item.value));
     else dd.append(item.value);
-    if (item.readAt) dd.append(el("span", { class: "muted" }, ` · read ${new Date(item.readAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`));
+    if (item.readAt)
+      dd.append(
+        el(
+          "span",
+          { class: "muted" },
+          ` · read ${new Date(item.readAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`,
+        ),
+      );
     dl.append(dd);
   }
   return dl;
@@ -172,20 +194,37 @@ function busy(button: HTMLButtonElement, work: () => Promise<void>): void {
 export function renderRow(row: RowModel, actions: RowActions = {}, open = false): HTMLLIElement {
   const li = el("li", { class: `row${open ? " open" : ""}`, id: `post-${row.id}` });
   const { time, day } = localTime(row.dueAt, row.timezone);
-  const statusKey = row.status === "held" ? "hold" : row.status === "draft" && row.verdict === "still_true" ? "draft" : row.verdict;
-  const label = row.status === "held" ? "Held" : LABELS[statusKey] ?? statusKey;
+  const statusKey =
+    row.status === "held"
+      ? "hold"
+      : row.status === "draft" && row.verdict === "still_true"
+        ? "draft"
+        : row.verdict;
+  const label = row.status === "held" ? "Held" : (LABELS[statusKey] ?? statusKey);
   const flapNode = flap(label, statusKey);
   const summary = el(
     "button",
     { class: "summary", type: "button", "aria-expanded": String(open), "aria-controls": `detail-${row.id}` },
-    el("span", { class: "when" }, el("span", { class: "flap time-flap" }, time), el("span", { class: "day" }, day)),
-    el("span", { class: "channel" }, row.channel?.name ?? "Channel", el("small", {}, row.channel?.service ?? "")),
+    el(
+      "span",
+      { class: "when" },
+      el("span", { class: "flap time-flap" }, time),
+      el("span", { class: "day" }, day),
+    ),
+    el(
+      "span",
+      { class: "channel" },
+      row.channel?.name ?? "Channel",
+      el("small", {}, row.channel?.service ?? ""),
+    ),
     el("span", { class: "text" }, row.text),
     el(
       "span",
       { class: "status" },
       flapNode,
-      row.findings.length ? el("small", {}, `${row.findings.length} finding${row.findings.length > 1 ? "s" : ""}`) : null,
+      row.findings.length
+        ? el("small", {}, `${row.findings.length} finding${row.findings.length > 1 ? "s" : ""}`)
+        : null,
     ),
   );
   summary.addEventListener("click", () => {
@@ -197,7 +236,15 @@ export function renderRow(row: RowModel, actions: RowActions = {}, open = false)
   const detail = el("div", { class: "detail", id: `detail-${row.id}` });
   detail.append(highlighted(row.text, row.findings));
   if (row.findings.length === 0) {
-    detail.append(el("p", { class: "muted" }, row.verdict === "unchecked" ? "Not checked yet." : "Nothing in this post contradicts the day it goes out."));
+    detail.append(
+      el(
+        "p",
+        { class: "muted" },
+        row.verdict === "unchecked"
+          ? "Not checked yet."
+          : "Nothing in this post contradicts the day it goes out.",
+      ),
+    );
   }
   for (const finding of row.findings) {
     const box = el("div", { class: `finding ${finding.verdict}` });
@@ -212,7 +259,11 @@ export function renderRow(row: RowModel, actions: RowActions = {}, open = false)
       box.append(el("p", { class: "muted" }, `Suggested fix: ${finding.fix.summary}`));
     }
     if (finding.fix && actions.onFix) {
-      const b = el("button", { class: "btn small", type: "button" }, finding.fix.kind === "reschedule" ? "Move it" : "Apply fix");
+      const b = el(
+        "button",
+        { class: "btn small", type: "button" },
+        finding.fix.kind === "reschedule" ? "Move it" : "Apply fix",
+      );
       busy(b, () => (actions.onFix as NonNullable<RowActions["onFix"]>)(row, finding));
       buttons.append(b);
     }
@@ -234,7 +285,14 @@ export function renderRow(row: RowModel, actions: RowActions = {}, open = false)
   if (row.status === "held" && actions.onRelease) {
     const b = el("button", { class: "btn ghost small", type: "button" }, "Release as written");
     busy(b, () => (actions.onRelease as NonNullable<RowActions["onRelease"]>)(row));
-    detail.append(el("div", { class: "actions" }, b, el("span", { class: "muted" }, "Puts it back in the queue at its original time.")));
+    detail.append(
+      el(
+        "div",
+        { class: "actions" },
+        b,
+        el("span", { class: "muted" }, "Puts it back in the queue at its original time."),
+      ),
+    );
   }
   li.append(detail);
   return li;

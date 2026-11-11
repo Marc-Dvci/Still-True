@@ -19,7 +19,9 @@ export function normaliseUrl(raw: string): string | null {
 }
 
 export function linksInText(text: string): string[] {
-  return [...text.matchAll(URL_PATTERN)].map((m) => normaliseUrl(m[0])).filter((u): u is string => u !== null);
+  return [...text.matchAll(URL_PATTERN)]
+    .map((m) => normaliseUrl(m[0]))
+    .filter((u): u is string => u !== null);
 }
 
 function metadataLinks(metadata: unknown): string[] {

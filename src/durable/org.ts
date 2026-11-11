@@ -38,7 +38,7 @@ import { weatherAtDue } from "../fetchers/weather";
 import { importAesKey, open, seal, sha256Hex } from "../security/crypto";
 import { oauthConfig } from "../config";
 import { sampleDrafts } from "../demo/samples";
-import { suggestRewrite } from "../ai/assist";
+import { suggestRewrite, type TextModel } from "../ai/assist";
 import { runDrill, type DrillResult } from "../demo/drill";
 import { localParts } from "../core/time";
 
@@ -106,7 +106,12 @@ export interface BoardState {
   settings: Settings;
   posts: BoardPost[];
   ledger: { at: string; postId: string | null; event: string; detail: string }[];
-  budget: { requestsToday: number; lastCycleAt: string | null; nextCycleAt: string | null; remaining: number | null };
+  budget: {
+    requestsToday: number;
+    lastCycleAt: string | null;
+    nextCycleAt: string | null;
+    remaining: number | null;
+  };
   scopes: string;
 }
 
@@ -188,7 +193,10 @@ export class OrgDO extends DurableObject<Env> {
 
   // ------------------------------------------------------------------ connection and tokens
 
-  async connectAccount(account: { id: string; name: string; timezone: string | null }, tokens: TokenSet): Promise<void> {
+  async connectAccount(
+    account: { id: string; name: string; timezone: string | null },
+    tokens: TokenSet,
+  ): Promise<void> {
     await this.storeTokens(account.id, tokens);
     this.put("account", { id: account.id, name: account.name, timezone: account.timezone ?? "UTC" });
     if (!this.get<Settings>("settings")) {
@@ -246,7 +254,9 @@ export class OrgDO extends DurableObject<Env> {
     const stored = this.get<{ sealed: string }>("tokens");
     if (account && stored) {
       try {
-        const tokens = JSON.parse(await open(await importAesKey(this.env.TOKEN_KEY), stored.sealed, account.id)) as TokenSet;
+        const tokens = JSON.parse(
+          await open(await importAesKey(this.env.TOKEN_KEY), stored.sealed, account.id),
+        ) as TokenSet;
         await revokeToken(oauthConfig(this.env) as OAuthConfig, tokens.refreshToken);
       } catch {
         // Revocation is best effort; the stored tokens are deleted either way.
@@ -254,12 +264,16 @@ export class OrgDO extends DurableObject<Env> {
     }
     await this.ctx.storage.deleteAlarm();
     await this.ctx.storage.deleteAll();
+    // deleteAll drops the tables too: recreate the empty schema so later reads answer "nothing".
+    this.migrate();
   }
 
   // ------------------------------------------------------------------ ledger
 
   private async appendLedger(postId: string | null, event: string, detail: string): Promise<void> {
-    const last = this.sql.exec<{ hash: string }>("SELECT hash FROM ledger ORDER BY id DESC LIMIT 1").toArray()[0];
+    const last = this.sql
+      .exec<{ hash: string }>("SELECT hash FROM ledger ORDER BY id DESC LIMIT 1")
+      .toArray()[0];
     const prev = last?.hash ?? "0".repeat(64);
     const at = new Date(this.now()).toISOString();
     const hash = await sha256Hex(`${prev}|${at}|${postId ?? ""}|${event}|${detail}`);
@@ -276,9 +290,14 @@ export class OrgDO extends DurableObject<Env> {
 
   async verifyLedger(): Promise<{ entries: number; intact: boolean }> {
     const rows = this.sql
-      .exec<{ at: string; post_id: string | null; event: string; detail: string; prev_hash: string; hash: string }>(
-        "SELECT at, post_id, event, detail, prev_hash, hash FROM ledger ORDER BY id",
-      )
+      .exec<{
+        at: string;
+        post_id: string | null;
+        event: string;
+        detail: string;
+        prev_hash: string;
+        hash: string;
+      }>("SELECT at, post_id, event, detail, prev_hash, hash FROM ledger ORDER BY id")
       .toArray();
     let prev = "0".repeat(64);
     for (const row of rows) {
@@ -313,7 +332,8 @@ export class OrgDO extends DurableObject<Env> {
         this.put("authFailed", { at: new Date(this.now()).toISOString(), message: error.message });
         return; // No alarm: the account has to reconnect.
       }
-      const delay = error instanceof BufferRateLimitError ? error.retryAfterSeconds * 1000 + 5_000 : 5 * 60_000;
+      const delay =
+        error instanceof BufferRateLimitError ? error.retryAfterSeconds * 1000 + 5_000 : 5 * 60_000;
       console.error(JSON.stringify({ event: "cycle_failed", message: (error as Error).message }));
       await this.ctx.storage.setAlarm(this.now() + delay);
     }
@@ -365,10 +385,16 @@ export class OrgDO extends DurableObject<Env> {
 
         const weather =
           settings.location !== null
-            ? await weatherAtDue(settings.location.latitude, settings.location.longitude, post.dueAt, timezone, {
-                cache: this.ctx.storage,
-                now: startedAt,
-              })
+            ? await weatherAtDue(
+                settings.location.latitude,
+                settings.location.longitude,
+                post.dueAt,
+                timezone,
+                {
+                  cache: this.ctx.storage,
+                  now: startedAt,
+                },
+              )
             : null;
 
         const context: CheckContext = {
@@ -412,7 +438,9 @@ export class OrgDO extends DurableObject<Env> {
 
     // Rows for posts no longer scheduled (published, deleted, moved out of the horizon) are dropped
     // unless Still True is holding them.
-    const known = this.sql.exec<{ post_id: string; held_at: string | null }>("SELECT post_id, held_at FROM posts").toArray();
+    const known = this.sql
+      .exec<{ post_id: string; held_at: string | null }>("SELECT post_id, held_at FROM posts")
+      .toArray();
     for (const { post_id, held_at } of known) {
       if (!seen.has(post_id) && !held_at) this.sql.exec("DELETE FROM posts WHERE post_id = ?", post_id);
     }
@@ -442,7 +470,10 @@ export class OrgDO extends DurableObject<Env> {
     let after: string | null = null;
     for (let page = 0; page < 3; page += 1) {
       const data: {
-        posts: { edges: { node: BufferPost }[]; pageInfo: { hasNextPage: boolean; endCursor: string | null } };
+        posts: {
+          edges: { node: BufferPost }[];
+          pageInfo: { hasNextPage: boolean; endCursor: string | null };
+        };
       } = await client.request(QUEUE, {
         organizationId,
         status: ["scheduled", "draft"],
@@ -466,19 +497,25 @@ export class OrgDO extends DurableObject<Env> {
     const cached = this.get<string | false>(cacheKey);
     if (cached !== null) return cached || null;
     try {
-      const data = await client.request<{ tagsV2: { edges: { node: { id: string; name: string } }[] } }>(TAGS, {
-        organizationId,
-      });
+      const data = await client.request<{ tagsV2: { edges: { node: { id: string; name: string } }[] } }>(
+        TAGS,
+        {
+          organizationId,
+        },
+      );
       const existing = data.tagsV2.edges.find((e) => e.node.name === tag.name);
       if (existing) {
         this.put(cacheKey, existing.node.id);
         return existing.node.id;
       }
-      const created = await client.request<{ createTag: MutationResult & { tag?: { id: string } } }>(CREATE_TAG, {
-        organizationId,
-        name: tag.name,
-        color: tag.color,
-      });
+      const created = await client.request<{ createTag: MutationResult & { tag?: { id: string } } }>(
+        CREATE_TAG,
+        {
+          organizationId,
+          name: tag.name,
+          color: tag.color,
+        },
+      );
       const id = created.createTag.tag?.id ?? null;
       this.put(cacheKey, id ?? false);
       return id;
@@ -595,7 +632,9 @@ export class OrgDO extends DurableObject<Env> {
         await this.appendLedger(post.id, "held", `${fresh.map((f) => f.code).join(", ")}; due ${post.dueAt}`);
       }
     } else if (tags.reviewTag && !existingTagIds.includes(tags.reviewTag)) {
-      await client.request(SET_TAGS, { id: post.id, tagIds: unique([...existingTagIds, tags.reviewTag]) }).catch(() => null);
+      await client
+        .request(SET_TAGS, { id: post.id, tagIds: unique([...existingTagIds, tags.reviewTag]) })
+        .catch(() => null);
     }
 
     const scopes = this.get<{ scope: string }>("tokens")?.scope ?? "";
@@ -603,9 +642,15 @@ export class OrgDO extends DurableObject<Env> {
       const text = noteText(result, fresh, settings, this.env.PUBLIC_ORIGIN ?? "", post.id);
       const note = await client
         .request<{ createCollaborationNote: MutationResult }>(ADD_NOTE, { postId: post.id, text })
-        .catch((error: Error) => ({ createCollaborationNote: { __typename: "Error", message: error.message } }));
+        .catch((error: Error) => ({
+          createCollaborationNote: { __typename: "Error", message: error.message },
+        }));
       const failure = mutationFailed(note.createCollaborationNote);
-      await this.appendLedger(post.id, failure ? "note_failed" : "noted", failure ?? fresh.map((f) => f.code).join(", "));
+      await this.appendLedger(
+        post.id,
+        failure ? "note_failed" : "noted",
+        failure ?? fresh.map((f) => f.code).join(", "),
+      );
     }
     this.sql.exec(
       "UPDATE posts SET noted = ? WHERE post_id = ?",
@@ -618,16 +663,24 @@ export class OrgDO extends DurableObject<Env> {
 
   async release(postId: string, dueAt?: string): Promise<{ ok: boolean; message: string }> {
     const row = this.sql
-      .exec<{ held_due_at: string | null; org_id: string }>("SELECT held_due_at, org_id FROM posts WHERE post_id = ?", postId)
+      .exec<{ held_due_at: string | null; org_id: string }>(
+        "SELECT held_due_at, org_id FROM posts WHERE post_id = ?",
+        postId,
+      )
       .toArray()[0];
     const target = dueAt ?? row?.held_due_at ?? null;
     if (!row || !target) return { ok: false, message: "This post is not held by Still True." };
-    const when = Date.parse(target) < this.now() + 5 * 60_000 ? new Date(this.now() + 5 * 60_000).toISOString() : target;
+    const when =
+      Date.parse(target) < this.now() + 5 * 60_000 ? new Date(this.now() + 5 * 60_000).toISOString() : target;
     const client = this.client();
     const current = await client.request<{ post: BufferPost }>(POST, { id: postId });
     const heldTag = this.get<string | false>(`tag:${row.org_id}:${HELD_TAG.name}`);
     const tagIds = current.post.tags.map((t) => t.id).filter((id) => id !== heldTag);
-    const result = await client.request<{ editPost: MutationResult }>(RELEASE, { id: postId, dueAt: when, tagIds });
+    const result = await client.request<{ editPost: MutationResult }>(RELEASE, {
+      id: postId,
+      dueAt: when,
+      tagIds,
+    });
     const failure = mutationFailed(result.editPost);
     if (failure) return { ok: false, message: failure };
     this.sql.exec(
@@ -645,16 +698,24 @@ export class OrgDO extends DurableObject<Env> {
     if (!finding?.fix) return { ok: false, message: "No fix is available for this finding." };
     const client = this.client();
     if (finding.fix.kind === "replace_text" && finding.fix.text) {
-      const result = await client.request<{ editPost: MutationResult }>(EDIT_TEXT, { id: postId, text: finding.fix.text });
+      const result = await client.request<{ editPost: MutationResult }>(EDIT_TEXT, {
+        id: postId,
+        text: finding.fix.text,
+      });
       const failure = mutationFailed(result.editPost);
       if (failure) return { ok: false, message: failure };
     } else if (finding.fix.kind === "reschedule" && finding.fix.dueAt) {
-      const result = await client.request<{ editPost: MutationResult }>(RESCHEDULE, { id: postId, dueAt: finding.fix.dueAt });
+      const result = await client.request<{ editPost: MutationResult }>(RESCHEDULE, {
+        id: postId,
+        dueAt: finding.fix.dueAt,
+      });
       const failure = mutationFailed(result.editPost);
       if (failure) return { ok: false, message: failure };
     }
     await this.appendLedger(postId, "fix_applied", `${code}: ${finding.fix.summary}`);
-    const held = this.sql.exec<{ held_at: string | null }>("SELECT held_at FROM posts WHERE post_id = ?", postId).toArray()[0];
+    const held = this.sql
+      .exec<{ held_at: string | null }>("SELECT held_at FROM posts WHERE post_id = ?", postId)
+      .toArray()[0];
     if (held?.held_at) {
       // A fixed post that was held goes back to its slot (or the fix's new time).
       return this.release(postId, finding.fix.kind === "reschedule" ? finding.fix.dueAt : undefined);
@@ -664,7 +725,9 @@ export class OrgDO extends DurableObject<Env> {
   }
 
   async dismiss(postId: string, code: string): Promise<{ ok: boolean }> {
-    const row = this.sql.exec<{ dismissed: string }>("SELECT dismissed FROM posts WHERE post_id = ?", postId).toArray()[0];
+    const row = this.sql
+      .exec<{ dismissed: string }>("SELECT dismissed FROM posts WHERE post_id = ?", postId)
+      .toArray()[0];
     if (!row) return { ok: false };
     this.sql.exec(
       "UPDATE posts SET dismissed = ? WHERE post_id = ?",
@@ -676,11 +739,13 @@ export class OrgDO extends DurableObject<Env> {
   }
 
   async suggest(postId: string, code: string): Promise<{ text: string | null; reason: string }> {
-    const row = this.sql.exec<{ text: string; findings: string }>("SELECT text, findings FROM posts WHERE post_id = ?", postId).toArray()[0];
+    const row = this.sql
+      .exec<{ text: string; findings: string }>("SELECT text, findings FROM posts WHERE post_id = ?", postId)
+      .toArray()[0];
     if (!row) return { text: null, reason: "Unknown post" };
     const finding = (JSON.parse(row.findings) as Finding[]).find((f) => f.code === code);
     if (!finding) return { text: null, reason: "Unknown finding" };
-    return suggestRewrite(this.env.AI, row.text, finding);
+    return suggestRewrite(this.env.AI as unknown as TextModel, row.text, finding);
   }
 
   async createSamples(channelId: string): Promise<{ created: number; messages: string[] }> {
@@ -690,7 +755,15 @@ export class OrgDO extends DurableObject<Env> {
     let created = 0;
     for (const draft of sampleDrafts(this.env.PUBLIC_ORIGIN ?? "", account?.timezone ?? "UTC", this.now())) {
       const result = await client.request<{ createPost: MutationResult }>(CREATE_DRAFT, {
-        input: { channelId, text: draft.text, mode: "customScheduled", dueAt: draft.dueAt, schedulingType: "automatic", saveToDraft: true, assets: [] },
+        input: {
+          channelId,
+          text: draft.text,
+          mode: "customScheduled",
+          dueAt: draft.dueAt,
+          schedulingType: "automatic",
+          saveToDraft: true,
+          assets: [],
+        },
       });
       const failure = mutationFailed(result.createPost);
       if (failure) messages.push(failure);
@@ -704,7 +777,8 @@ export class OrgDO extends DurableObject<Env> {
   drill(scenarioId: string, origin: string): DrillResult | null {
     const channels = new Map<string, Channel>();
     for (const org of this.get<Organization[]>("organizations") ?? []) {
-      for (const c of this.get<{ channels: Channel[] }>(`channels:${org.id}`)?.channels ?? []) channels.set(c.id, c);
+      for (const c of this.get<{ channels: Channel[] }>(`channels:${org.id}`)?.channels ?? [])
+        channels.set(c.id, c);
     }
     const rows = this.sql
       .exec<{ post_id: string; text: string; due_at: string | null; channel_id: string }>(
@@ -719,7 +793,10 @@ export class OrgDO extends DurableObject<Env> {
         id: r.post_id,
         text: r.text,
         localTime: [local.hour, local.minute] as [number, number],
-        channel: { name: channel?.displayName || channel?.name || "Channel", service: channel?.service ?? "unknown" },
+        channel: {
+          name: channel?.displayName || channel?.name || "Channel",
+          service: channel?.service ?? "unknown",
+        },
       };
     });
     return runDrill(scenarioId, origin, items);
@@ -728,7 +805,9 @@ export class OrgDO extends DurableObject<Env> {
   // ------------------------------------------------------------------ board
 
   private findingsOf(postId: string): Finding[] {
-    const row = this.sql.exec<{ findings: string }>("SELECT findings FROM posts WHERE post_id = ?", postId).toArray()[0];
+    const row = this.sql
+      .exec<{ findings: string }>("SELECT findings FROM posts WHERE post_id = ?", postId)
+      .toArray()[0];
     return row ? (JSON.parse(row.findings) as Finding[]) : [];
   }
 
@@ -737,7 +816,8 @@ export class OrgDO extends DurableObject<Env> {
     const organizations = this.get<Organization[]>("organizations") ?? [];
     const channelIndex = new Map<string, Channel>();
     for (const org of organizations) {
-      for (const channel of this.get<{ channels: Channel[] }>(`channels:${org.id}`)?.channels ?? []) channelIndex.set(channel.id, channel);
+      for (const channel of this.get<{ channels: Channel[] }>(`channels:${org.id}`)?.channels ?? [])
+        channelIndex.set(channel.id, channel);
     }
     const rows = this.sql
       .exec<{
@@ -764,7 +844,13 @@ export class OrgDO extends DurableObject<Env> {
         id: r.post_id,
         organizationId: r.org_id,
         channel: channel
-          ? { id: channel.id, name: channel.displayName || channel.name, service: channel.service, avatar: channel.avatar, timezone: channel.timezone }
+          ? {
+              id: channel.id,
+              name: channel.displayName || channel.name,
+              service: channel.service,
+              avatar: channel.avatar,
+              timezone: channel.timezone,
+            }
           : null,
         text: r.text,
         dueAt: r.held_due_at ?? r.due_at,
@@ -791,7 +877,13 @@ export class OrgDO extends DurableObject<Env> {
     const channels: BoardState["channels"] = [];
     for (const org of organizations) {
       for (const c of this.get<{ channels: Channel[] }>(`channels:${org.id}`)?.channels ?? []) {
-        if (!c.isDisconnected && !c.isLocked) channels.push({ id: c.id, name: c.displayName || c.name, service: c.service, organizationId: org.id });
+        if (!c.isDisconnected && !c.isLocked)
+          channels.push({
+            id: c.id,
+            name: c.displayName || c.name,
+            service: c.service,
+            organizationId: org.id,
+          });
       }
     }
     return {

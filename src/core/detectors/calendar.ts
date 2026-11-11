@@ -1,16 +1,26 @@
 // Calendar: what the post's own words say about time, read on the day it actually goes out.
-import { findDates, findRelative, findTimes, findWeekdays, relativeKeys, weekdayName, type DateRef } from "../datetext";
+import {
+  findDates,
+  findRelative,
+  findTimes,
+  findWeekdays,
+  relativeKeys,
+  weekdayName,
+  type DateRef,
+} from "../datetext";
 import { findAll, has, matchCase, sentences, type Match } from "../text";
 import { formatLocalDate, localParts, weekdayOf } from "../time";
 import type { CheckContext, Evidence, Finding, PostUnderCheck } from "../types";
 
 const SAME_DAY = /\b(today|tonight|this evening|aujourd'?hui|ce soir)\b/;
-const EVENT_START = /\b(doors open|doors at|starts? at|starting at|begins? at|kicks? off at|ouverture des portes|ca commence|debut a|commence a)\b/;
+const EVENT_START =
+  /\b(doors open|doors at|starts? at|starting at|begins? at|kicks? off at|ouverture des portes|ca commence|debut a|commence a)\b/;
 const FUTURE_CUE =
   /\b(join us|see you|come (?:by|down|along|and)|don'?t miss|until|through|ends?|ending|last day|last chance|book|register|tickets?|on sale|opens?|happening|save the date|venez|rejoignez|rendez-vous|jusqu'?au|jusqu'?a|dernier jour|derniere chance|ne manquez pas|reservez|inscrivez|billets?|a partir du|des le|le rendez-vous)\b/;
 const PAST_CUE =
   /\b(was|were|we had|we celebrated|celebrated|thank you|thanks to everyone|last week|last month|took place|a eu lieu|etait|nous avons|merci a|merci pour|la semaine derniere)\b/;
-const MORNING = /\b(good morning|morning all|morning everyone|rise and shine|this morning|bon matin|bonne matinee|ce matin)\b/;
+const MORNING =
+  /\b(good morning|morning all|morning everyone|rise and shine|this morning|bon matin|bonne matinee|ce matin)\b/;
 const NIGHT = /\b(good ?night|sweet dreams|bonne nuit)\b/;
 
 function publishing(post: PostUnderCheck): Evidence {
@@ -80,9 +90,13 @@ export function calendarFindings(post: PostUnderCheck, ctx: CheckContext): Findi
     const anchor = conflictDate ?? conflictWeekday;
     if (!anchor) continue;
     const meaning = keys.map((k) => formatLocalDate(k)).join(" or ");
-    const named = conflictDate ? formatLocalDate(conflictDate.key) : weekdayName((conflictWeekday as { value: number }).value, "en");
+    const named = conflictDate
+      ? formatLocalDate(conflictDate.key)
+      : weekdayName((conflictWeekday as { value: number }).value, "en");
     // Fix: keep the explicit day, drop the relative word ("Demain, dimanche 15" -> "Dimanche 15").
-    let fixed = replaceSpan(text, rel.start, rel.end, "").replace(/^\s*[,;:]\s*/, "").replace(/\s{2,}/g, " ");
+    let fixed = replaceSpan(text, rel.start, rel.end, "")
+      .replace(/^\s*[,;:]\s*/, "")
+      .replace(/\s{2,}/g, " ");
     fixed = fixed.replace(/(^|[.!?]\s+)([a-zà-ÿ])/u, (_m, p: string, c: string) => `${p}${c.toUpperCase()}`);
     findings.push({
       detector: "calendar",
@@ -91,7 +105,10 @@ export function calendarFindings(post: PostUnderCheck, ctx: CheckContext): Findi
       title: "Relative day and date disagree",
       detail: `Read on ${formatLocalDate(due.date)}, "${rel.text}" means ${meaning}, but the post names ${named}.`,
       evidence: [goesOut, { label: `"${rel.text}" means`, value: meaning }],
-      spans: [[rel.start, rel.end], [anchor.start, anchor.end]],
+      spans: [
+        [rel.start, rel.end],
+        [anchor.start, anchor.end],
+      ],
       fix: { kind: "replace_text", summary: `Remove "${rel.text}" and keep ${named}`, text: fixed.trim() },
     });
   }
@@ -100,7 +117,10 @@ export function calendarFindings(post: PostUnderCheck, ctx: CheckContext): Findi
   if (post.firstSeenDueAt) {
     const before = localParts(post.firstSeenDueAt, post.timezone).date;
     const dayWords = relatives.filter((r) => r.kind === "day" || r.kind === "daypart");
-    const thisWeekday = findAll(text, /\b(?:this|ce|cette) (?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)\b/);
+    const thisWeekday = findAll(
+      text,
+      /\b(?:this|ce|cette) (?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)\b/,
+    );
     const words = [...dayWords, ...thisWeekday];
     if (before !== due.date && words.length > 0) {
       findings.push({
@@ -121,9 +141,14 @@ export function calendarFindings(post: PostUnderCheck, ctx: CheckContext): Findi
     const sameDay = has(sentence.text, SAME_DAY);
     const starts = has(sentence.text, EVENT_START);
     if (!sameDay && !starts) continue;
-    if (!sameDay && (dates.length > 0 || weekdays.length > 0 || relatives.some((r) => r.offset !== 0))) continue;
+    if (!sameDay && (dates.length > 0 || weekdays.length > 0 || relatives.some((r) => r.offset !== 0)))
+      continue;
     const evening = has(sentence.text, /\b(tonight|this evening|ce soir)\b/);
-    const times = findTimes(sentence.text, evening).map((t) => ({ ...t, start: t.start + sentence.start, end: t.end + sentence.start }));
+    const times = findTimes(sentence.text, evening).map((t) => ({
+      ...t,
+      start: t.start + sentence.start,
+      end: t.end + sentence.start,
+    }));
     if (times.length === 0) continue;
     const latest = times.reduce((a, b) => (b.minutes > a.minutes ? b : a));
     if (latest.minutes < dueMinutes) {

@@ -24,7 +24,12 @@ export interface WorldSnapshot {
 export function gdacsUrl(now: number): string {
   const today = new Date(now).toISOString().slice(0, 10);
   const from = new Date(now - 10 * 86_400_000).toISOString().slice(0, 10);
-  const params = new URLSearchParams({ eventlist: "EQ;TC;FL;VO;WF;DR", alertlevel: "Orange;Red", fromdate: from, todate: today });
+  const params = new URLSearchParams({
+    eventlist: "EQ;TC;FL;VO;WF;DR",
+    alertlevel: "Orange;Red",
+    fromdate: from,
+    todate: today,
+  });
   return `${GDACS_URL}?${params}`;
 }
 

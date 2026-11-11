@@ -1,0 +1,37 @@
+{
+ "id": 7700000000001,
+ "title": "Wool scarf, rust",
+ "handle": "wool-scarf",
+ "vendor": "Atelier Nord",
+ "type": "",
+ "tags": [],
+ "price": 3900,
+ "price_min": 3900,
+ "price_max": 3900,
+ "available": false,
+ "price_varies": false,
+ "compare_at_price": null,
+ "variants": [
+  {
+   "id": 44010000,
+   "title": "One size",
+   "option1": "One size",
+   "sku": "wool-scarf-0",
+   "requires_shipping": true,
+   "taxable": true,
+   "featured_image": null,
+   "available": false,
+   "name": "Wool scarf, rust - One size",
+   "public_title": "One size",
+   "options": [
+    "One size"
+   ],
+   "price": 3900,
+   "weight": 300,
+   "compare_at_price": null,
+   "inventory_management": "shopify",
+   "barcode": ""
+  }
+ ],
+ "url": "/products/wool-scarf"
+}

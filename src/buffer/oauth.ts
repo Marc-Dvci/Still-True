@@ -90,7 +90,10 @@ async function tokenRequest(
     throw new OAuthError(detail ?? `Token endpoint answered HTTP ${response.status}`, code);
   }
   if (typeof json.access_token !== "string" || typeof json.refresh_token !== "string") {
-    throw new OAuthError("Buffer returned no refresh token; offline_access must be enabled", "no_refresh_token");
+    throw new OAuthError(
+      "Buffer returned no refresh token; offline_access must be enabled",
+      "no_refresh_token",
+    );
   }
   const expiresIn = Number(json.expires_in) || 3600;
   return {

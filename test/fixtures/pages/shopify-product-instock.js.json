@@ -1,0 +1,77 @@
+{
+ "id": 7700000000001,
+ "title": "Linen shirt, natural",
+ "handle": "linen-shirt",
+ "vendor": "Atelier Nord",
+ "type": "",
+ "tags": [],
+ "price": 4900,
+ "price_min": 4900,
+ "price_max": 4900,
+ "available": true,
+ "price_varies": false,
+ "compare_at_price": null,
+ "variants": [
+  {
+   "id": 44010000,
+   "title": "S",
+   "option1": "S",
+   "sku": "linen-shirt-0",
+   "requires_shipping": true,
+   "taxable": true,
+   "featured_image": null,
+   "available": true,
+   "name": "Linen shirt, natural - S",
+   "public_title": "S",
+   "options": [
+    "S"
+   ],
+   "price": 4900,
+   "weight": 300,
+   "compare_at_price": null,
+   "inventory_management": "shopify",
+   "barcode": ""
+  },
+  {
+   "id": 44010001,
+   "title": "M",
+   "option1": "M",
+   "sku": "linen-shirt-1",
+   "requires_shipping": true,
+   "taxable": true,
+   "featured_image": null,
+   "available": true,
+   "name": "Linen shirt, natural - M",
+   "public_title": "M",
+   "options": [
+    "M"
+   ],
+   "price": 4900,
+   "weight": 300,
+   "compare_at_price": null,
+   "inventory_management": "shopify",
+   "barcode": ""
+  },
+  {
+   "id": 44010002,
+   "title": "L",
+   "option1": "L",
+   "sku": "linen-shirt-2",
+   "requires_shipping": true,
+   "taxable": true,
+   "featured_image": null,
+   "available": false,
+   "name": "Linen shirt, natural - L",
+   "public_title": "L",
+   "options": [
+    "L"
+   ],
+   "price": 4900,
+   "weight": 300,
+   "compare_at_price": null,
+   "inventory_management": "shopify",
+   "barcode": ""
+  }
+ ],
+ "url": "/products/linen-shirt"
+}

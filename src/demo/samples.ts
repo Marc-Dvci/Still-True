@@ -1,6 +1,14 @@
 // "Add sample drafts": five drafts written so that each check has something to find, linked to the demo
 // shop and venue. They are created with saveToDraft, so they never publish on their own.
-import { addDays, localParts, localToInstant, weekdayOf, WEEKDAY_NAMES_EN, MONTH_NAMES_EN, parseDateKey } from "../core/time";
+import {
+  addDays,
+  localParts,
+  localToInstant,
+  weekdayOf,
+  WEEKDAY_NAMES_EN,
+  MONTH_NAMES_EN,
+  parseDateKey,
+} from "../core/time";
 
 export interface SampleDraft {
   text: string;
@@ -12,11 +20,12 @@ export function sampleDrafts(origin: string, timeZone: string, now: number): Sam
   const today = localParts(now, timeZone).date;
   const tomorrow = addDays(today, 1);
   const inTwo = addDays(today, 2);
-  const at = (date: string, hour: number, minute = 0): string => localToInstant(date, hour, minute, timeZone).toISOString();
+  const at = (date: string, hour: number, minute = 0): string =>
+    localToInstant(date, hour, minute, timeZone).toISOString();
 
   // A date four days out, announced with the weekday of the day before it: the mismatch is real.
   const eventDay = addDays(today, 4);
-  const wrongWeekday = WEEKDAY_NAMES_EN[((weekdayOf(eventDay) + 5) % 7)] as string;
+  const wrongWeekday = WEEKDAY_NAMES_EN[(weekdayOf(eventDay) + 5) % 7] as string;
   const { day, month } = parseDateKey(eventDay);
 
   return [

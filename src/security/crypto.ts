@@ -18,7 +18,10 @@ function toBase64Url(bytes: Uint8Array): string {
 }
 
 function fromBase64Url(value: string): Uint8Array {
-  const padded = value.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(value.length / 4) * 4, "=");
+  const padded = value
+    .replace(/-/g, "+")
+    .replace(/_/g, "/")
+    .padEnd(Math.ceil(value.length / 4) * 4, "=");
   return fromBase64(padded);
 }
 
@@ -73,7 +76,12 @@ export async function verify<T>(secret: string, token: string): Promise<T | null
   } catch {
     return null;
   }
-  const valid = await crypto.subtle.verify("HMAC", await hmacKey(secret), signatureBytes, encoder.encode(body));
+  const valid = await crypto.subtle.verify(
+    "HMAC",
+    await hmacKey(secret),
+    signatureBytes,
+    encoder.encode(body),
+  );
   if (!valid) return null;
   try {
     return JSON.parse(decoder.decode(fromBase64Url(body))) as T;

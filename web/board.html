@@ -40,18 +40,31 @@
         </div>
         <div class="field">
           <label for="place">Business location, for the weather check</label>
-          <input id="place" type="search" placeholder="Start typing a city" autocomplete="off" list="place-results" />
+          <input
+            id="place"
+            type="search"
+            placeholder="Start typing a city"
+            autocomplete="off"
+            list="place-results"
+          />
           <datalist id="place-results"></datalist>
           <span class="hint" id="place-current">No location set: the weather check is off.</span>
         </div>
         <fieldset class="field">
           <legend><strong>When a problem is certain</strong></legend>
-          <label class="choice"><input type="radio" name="policy" value="hold" /> Hold the post: move it to drafts and add a note</label>
-          <label class="choice"><input type="radio" name="policy" value="notes" /> Only add a note, never change a post</label>
+          <label class="choice"
+            ><input type="radio" name="policy" value="hold" /> Hold the post: move it to drafts and add a
+            note</label
+          >
+          <label class="choice"
+            ><input type="radio" name="policy" value="notes" /> Only add a note, never change a post</label
+          >
         </fieldset>
         <div class="actions">
           <button class="btn small" type="button" id="save-settings">Save</button>
-          <button class="btn small danger" type="button" id="disconnect">Disconnect and delete my data</button>
+          <button class="btn small danger" type="button" id="disconnect">
+            Disconnect and delete my data
+          </button>
         </div>
       </div>
 
@@ -59,7 +72,10 @@
 
       <section aria-labelledby="samples-title" id="samples">
         <h2 id="samples-title">See every check on your own account</h2>
-        <p class="lede">Add five sample drafts to one of your channels. Each one contains a problem a check should find. They are drafts: they never publish.</p>
+        <p class="lede">
+          Add five sample drafts to one of your channels. Each one contains a problem a check should find.
+          They are drafts: they never publish.
+        </p>
         <div class="choices">
           <select id="sample-channel" aria-label="Channel for the sample drafts"></select>
           <button class="btn small ghost" type="button" id="add-samples">Add sample drafts</button>

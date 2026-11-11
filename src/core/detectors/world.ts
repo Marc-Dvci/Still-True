@@ -43,7 +43,9 @@ export function worldFindings(post: PostUnderCheck, ctx: CheckContext): Finding[
   const promotional = isPromotional(post.text);
   const playful = isPlayful(post.text);
 
-  const events = recentEvents(ctx.gdacs, ctx.country, post.dueAt).filter((e) => e.alert === "red" || e.alert === "orange");
+  const events = recentEvents(ctx.gdacs, ctx.country, post.dueAt).filter(
+    (e) => e.alert === "red" || e.alert === "orange",
+  );
   let collided = false;
   for (const event of events) {
     const words = findAll(post.text, HAZARD_WORDS[event.type]);
@@ -56,7 +58,11 @@ export function worldFindings(post: PostUnderCheck, ctx: CheckContext): Finding[
       title: `Wording echoes an active ${HAZARD_NAMES[event.type]}`,
       detail: `"${words[0]?.text}" while GDACS reports a ${event.alert} ${HAZARD_NAMES[event.type]} alert in ${ctx.country}: ${event.name}.`,
       evidence: [
-        { label: "Alert", value: `${event.alert} · ${event.name}`, source: event.url ?? "https://www.gdacs.org/" },
+        {
+          label: "Alert",
+          value: `${event.alert} · ${event.name}`,
+          source: event.url ?? "https://www.gdacs.org/",
+        },
         { label: "Started", value: event.from },
       ],
       spans: words.map((w) => [w.start, w.end] as [number, number]),
@@ -85,17 +91,27 @@ export function worldFindings(post: PostUnderCheck, ctx: CheckContext): Finding[
     const dueKey = localParts(post.dueAt, post.timezone).date;
     const days = new Set([dueKey, addDays(dueKey, -1)]);
     const item = ctx.news.find(
-      (n) => (n.category === "attacks" || n.category === "disasters") && days.has(n.date) && n.countries.includes(ctx.country),
+      (n) =>
+        (n.category === "attacks" || n.category === "disasters") &&
+        days.has(n.date) &&
+        n.countries.includes(ctx.country),
     );
     if (item) {
       findings.push({
         detector: "world",
         code: "major_news_window",
         verdict: "review",
-        title: item.category === "attacks" ? "Promotion on a day of an attack" : "Promotion on a day of a disaster",
+        title:
+          item.category === "attacks"
+            ? "Promotion on a day of an attack"
+            : "Promotion on a day of a disaster",
         detail: `Wikipedia's Current Events for ${formatLocalDate(item.date)}: ${item.headline}`,
         evidence: [
-          { label: "News", value: item.headline, source: item.url ?? "https://en.wikipedia.org/wiki/Portal:Current_events" },
+          {
+            label: "News",
+            value: item.headline,
+            source: item.url ?? "https://en.wikipedia.org/wiki/Portal:Current_events",
+          },
         ],
         spans: [],
       });

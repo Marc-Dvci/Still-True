@@ -4,7 +4,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>How it works · Still True</title>
-    <meta name="description" content="The checks, the rules behind each verdict, the data sources and how Still True uses the Buffer API." />
+    <meta
+      name="description"
+      content="The checks, the rules behind each verdict, the data sources and how Still True uses the Buffer API."
+    />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/src/styles.css" />
   </head>
@@ -25,64 +28,181 @@
         <p class="eyebrow">How it works</p>
         <h1>Rules decide. Evidence is shown.</h1>
         <p>
-          Every verdict comes from code that names its evidence: what the post says, what the source says now, and when it
-          was read. A model is used in one place only: when you ask for new wording, and a suggestion is refused if it adds
-          a number, date, link or hashtag the post did not contain.
+          Every verdict comes from code that names its evidence: what the post says, what the source says now,
+          and when it was read. A model is used in one place only: when you ask for new wording, and a
+          suggestion is refused if it adds a number, date, link or hashtag the post did not contain.
         </p>
 
         <h2>The verdicts</h2>
         <ul>
           <li><span class="flap">Still true</span> nothing in the post contradicts the day it goes out.</li>
-          <li><span class="flap review">Review</span> a note is added in Buffer; the post stays scheduled.</li>
-          <li><span class="flap hold">Held</span> the post is moved to drafts with a note, and keeps its original time for release.</li>
+          <li>
+            <span class="flap review">Review</span> a note is added in Buffer; the post stays scheduled.
+          </li>
+          <li>
+            <span class="flap hold">Held</span> the post is moved to drafts with a note, and keeps its
+            original time for release.
+          </li>
         </ul>
 
         <h2>The checks</h2>
         <table class="api-table">
-          <thead><tr><th scope="col">Check</th><th scope="col">Verdict</th><th scope="col">Rule</th></tr></thead>
+          <thead>
+            <tr>
+              <th scope="col">Check</th>
+              <th scope="col">Verdict</th>
+              <th scope="col">Rule</th>
+            </tr>
+          </thead>
           <tbody>
-            <tr><td>Weekday and date disagree</td><td>Review, fix</td><td>A weekday next to a date that falls on another day.</td></tr>
-            <tr><td>Relative day and date disagree</td><td>Review, fix</td><td>"Tomorrow" read on the publish day contradicts a date or weekday in the same sentence.</td></tr>
-            <tr><td>Post moved to another day</td><td>Review</td><td>The due date moved since Still True first saw the post, and the post says "today", "tomorrow", "tonight" or "this weekend".</td></tr>
-            <tr><td>Time already passed</td><td>Review</td><td>"Tonight at 7pm" going out after 7pm the same day.</td></tr>
-            <tr><td>Date already passed</td><td>Hold</td><td>Future or promotional wording ("join us", "until", "last day") about a date before the publish date.</td></tr>
-            <tr><td>Greeting does not fit the hour</td><td>Review</td><td>"Good morning" from 18:00, "good night" before noon.</td></tr>
-            <tr><td>Link is broken</td><td>Hold</td><td>The link answers 404 or 410, or 5xx twice in a row.</td></tr>
-            <tr><td>Link lands on the home page</td><td>Review</td><td>A deep link now redirects to the site's root.</td></tr>
-            <tr><td>Out of stock</td><td>Hold</td><td>The product's structured data says OutOfStock, SoldOut or Discontinued.</td></tr>
-            <tr><td>Price changed</td><td>Review, fix</td><td>The post states a price no current offer on the page matches.</td></tr>
-            <tr><td>Event cancelled or postponed</td><td>Hold</td><td>The event's <code>eventStatus</code> says so.</td></tr>
-            <tr><td>Event date changed</td><td>Review, fix</td><td>The event's <code>startDate</code> differs from the date the post states.</td></tr>
-            <tr><td>The forecast says otherwise</td><td>Review, fix</td><td>Sun or outdoor wording into rain (60 % or more, or a wet WMO code); the next dry, bright slot is proposed.</td></tr>
-            <tr><td>Promotion on a day of remembrance</td><td>Review</td><td>A promotional or playful post on a national day of remembrance of the audience's country.</td></tr>
-            <tr><td>Wording echoes an active disaster</td><td>Hold</td><td>A red or orange GDACS alert in the audience's country began in the last 72 hours, and the post uses words tied to that hazard ("on fire" during a wildfire).</td></tr>
-            <tr><td>Promotion during a disaster</td><td>Review</td><td>A red GDACS alert in the audience's country in the last 72 hours, and promotional wording.</td></tr>
-            <tr><td>Promotion on a day of an attack or disaster</td><td>Review</td><td>Wikipedia's Current Events names the audience's country under an attack or disaster that day or the day before.</td></tr>
+            <tr>
+              <td>Weekday and date disagree</td>
+              <td>Review, fix</td>
+              <td>A weekday next to a date that falls on another day.</td>
+            </tr>
+            <tr>
+              <td>Relative day and date disagree</td>
+              <td>Review, fix</td>
+              <td>"Tomorrow" read on the publish day contradicts a date or weekday in the same sentence.</td>
+            </tr>
+            <tr>
+              <td>Post moved to another day</td>
+              <td>Review</td>
+              <td>
+                The due date moved since Still True first saw the post, and the post says "today", "tomorrow",
+                "tonight" or "this weekend".
+              </td>
+            </tr>
+            <tr>
+              <td>Time already passed</td>
+              <td>Review</td>
+              <td>"Tonight at 7pm" going out after 7pm the same day.</td>
+            </tr>
+            <tr>
+              <td>Date already passed</td>
+              <td>Hold</td>
+              <td>
+                Future or promotional wording ("join us", "until", "last day") about a date before the publish
+                date.
+              </td>
+            </tr>
+            <tr>
+              <td>Greeting does not fit the hour</td>
+              <td>Review</td>
+              <td>"Good morning" from 18:00, "good night" before noon.</td>
+            </tr>
+            <tr>
+              <td>Link is broken</td>
+              <td>Hold</td>
+              <td>The link answers 404 or 410, or 5xx twice in a row.</td>
+            </tr>
+            <tr>
+              <td>Link lands on the home page</td>
+              <td>Review</td>
+              <td>A deep link now redirects to the site's root.</td>
+            </tr>
+            <tr>
+              <td>Out of stock</td>
+              <td>Hold</td>
+              <td>The product's structured data says OutOfStock, SoldOut or Discontinued.</td>
+            </tr>
+            <tr>
+              <td>Price changed</td>
+              <td>Review, fix</td>
+              <td>The post states a price no current offer on the page matches.</td>
+            </tr>
+            <tr>
+              <td>Event cancelled or postponed</td>
+              <td>Hold</td>
+              <td>The event's <code>eventStatus</code> says so.</td>
+            </tr>
+            <tr>
+              <td>Event date changed</td>
+              <td>Review, fix</td>
+              <td>The event's <code>startDate</code> differs from the date the post states.</td>
+            </tr>
+            <tr>
+              <td>The forecast says otherwise</td>
+              <td>Review, fix</td>
+              <td>
+                Sun or outdoor wording into rain (60 % or more, or a wet WMO code); the next dry, bright slot
+                is proposed.
+              </td>
+            </tr>
+            <tr>
+              <td>Promotion on a day of remembrance</td>
+              <td>Review</td>
+              <td>
+                A promotional or playful post on a national day of remembrance of the audience's country.
+              </td>
+            </tr>
+            <tr>
+              <td>Wording echoes an active disaster</td>
+              <td>Hold</td>
+              <td>
+                A red or orange GDACS alert in the audience's country began in the last 72 hours, and the post
+                uses words tied to that hazard ("on fire" during a wildfire).
+              </td>
+            </tr>
+            <tr>
+              <td>Promotion during a disaster</td>
+              <td>Review</td>
+              <td>
+                A red GDACS alert in the audience's country in the last 72 hours, and promotional wording.
+              </td>
+            </tr>
+            <tr>
+              <td>Promotion on a day of an attack or disaster</td>
+              <td>Review</td>
+              <td>
+                Wikipedia's Current Events names the audience's country under an attack or disaster that day
+                or the day before.
+              </td>
+            </tr>
           </tbody>
         </table>
-        <p>Supportive posts ("our thoughts are with", "collecting donations", "we will be closed") are never flagged by the disaster and news checks.</p>
+        <p>
+          Supportive posts ("our thoughts are with", "collecting donations", "we will be closed") are never
+          flagged by the disaster and news checks.
+        </p>
 
         <h2>When it checks</h2>
         <p>
-          A sweep every three hours (every thirty minutes when something is due within three hours), then a re-check 60
-          and 10 minutes before each post goes out. Disaster alerts and news are read once for everyone every thirty
-          minutes, so the load on those services does not grow with the number of users. Each check costs one Buffer
-          request per organisation, plus one write only when something changes.
+          A sweep every three hours (every thirty minutes when something is due within three hours), then a
+          re-check 60 and 10 minutes before each post goes out. Disaster alerts and news are read once for
+          everyone every thirty minutes, so the load on those services does not grow with the number of users.
+          Each check costs one Buffer request per organisation, plus one write only when something changes.
         </p>
 
         <h2>For agents</h2>
         <p>
-          Still True also answers AI agents through MCP at <code>/mcp</code> with one tool, <code>check_post</code>. An agent
-          that drafts posts for Buffer can ask before it schedules.
+          Still True also answers AI agents through MCP at <code>/mcp</code> with one tool,
+          <code>check_post</code>. An agent that drafts posts for Buffer can ask before it schedules.
         </p>
 
         <h2 id="sources">Data sources</h2>
         <ul>
-          <li>Disaster alerts: <a href="https://www.gdacs.org/">GDACS</a>, the Global Disaster Alert and Coordination System (European Commission and United Nations). Its alerts are used to hold a post for a human, never to decide anything else.</li>
-          <li>News: <a href="https://en.wikipedia.org/wiki/Portal:Current_events">Wikipedia's Current Events portal</a>, licensed under CC BY-SA 4.0.</li>
-          <li>Weather: <a href="https://open-meteo.com/">Weather data by Open-Meteo.com</a>, licensed under CC BY 4.0.</li>
-          <li>Remembrance days: a calendar of 31 days in 17 countries, each entry with its official or reference source, in the source code.</li>
-          <li>Product and event facts: the structured data (schema.org) published by the linked page itself.</li>
+          <li>
+            Disaster alerts: <a href="https://www.gdacs.org/">GDACS</a>, the Global Disaster Alert and
+            Coordination System (European Commission and United Nations). Its alerts are used to hold a post
+            for a human, never to decide anything else.
+          </li>
+          <li>
+            News:
+            <a href="https://en.wikipedia.org/wiki/Portal:Current_events">Wikipedia's Current Events portal</a
+            >, licensed under CC BY-SA 4.0.
+          </li>
+          <li>
+            Weather: <a href="https://open-meteo.com/">Weather data by Open-Meteo.com</a>, licensed under CC
+            BY 4.0.
+          </li>
+          <li>
+            Remembrance days: a calendar of 31 days in 17 countries, each entry with its official or reference
+            source, in the source code.
+          </li>
+          <li>
+            Product and event facts: the structured data (schema.org) published by the linked page itself.
+          </li>
         </ul>
       </article>
     </main>
