@@ -20,4 +20,12 @@ describe("evaluation on the labelled cases", () => {
   it("covers all 18 finding codes", () => {
     expect(Object.keys(dev.codes)).toHaveLength(18);
   });
+
+  it("gets every verdict right on the held-out cases, labelled before the code and never tuned on", () => {
+    const heldout = evaluate("heldout");
+    expect(heldout.cases).toBe(143);
+    expect(heldout.verdictAccuracy).toBe(1);
+    expect(heldout.falseHolds).toBe(0);
+    expect(heldout.falseFlagsOnHealthy).toBe(0);
+  });
 });
