@@ -12,8 +12,7 @@ export default defineConfig({
     { name: "mobile", use: { ...devices["Pixel 7"] } },
   ],
   webServer: {
-    command:
-      "npx vite build && npx wrangler dev --port 8788 --ip 127.0.0.1 --var DEMO:1 --var PUBLIC_ORIGIN:http://127.0.0.1:8788",
+    command: "npx vite build && npx wrangler dev --env e2e --port 8788 --ip 127.0.0.1",
     url: "http://127.0.0.1:8788/api/health",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

@@ -1,0 +1,11 @@
+# Allowlist: only what the demo image needs.
+*
+!package.json
+!package-lock.json
+!wrangler.jsonc
+!tsconfig.json
+!vite.config.ts
+!src/**
+!web/**
+!data/**
+!scripts/dev_secrets.mjs

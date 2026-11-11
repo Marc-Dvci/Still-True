@@ -1,0 +1,93 @@
+# On every push: lint, format, types, the decision core's unit tests with coverage, the Worker and its
+# Durable Objects in workerd, the evaluation on the labelled cases, browser tests with axe-core, spelling
+# and links, and the Docker demo image started and called. Read-only: nothing here writes to the repository.
+name: tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx eslint .
+      - run: npx prettier --check .
+      - run: npm run typecheck
+      - name: Unit tests in random order, with line and branch coverage of the decision core
+        run: npx vitest run --project unit --coverage --sequence.seed="$GITHUB_RUN_ID" | tee unit.log
+      - name: Worker and Durable Object tests in workerd
+        run: npx vitest run --project worker --sequence.seed="$GITHUB_RUN_ID" | tee worker.log
+      - name: Evaluation on the labelled cases
+        run: |
+          npx tsx eval/run.ts dev | tee eval-dev.log
+          npx tsx eval/run.ts heldout | tee eval-heldout.log
+      - name: Summary on the run page
+        if: always()
+        run: |
+          {
+            echo "### Tests (random order, seed $GITHUB_RUN_ID)"
+            echo
+            echo "| Suite | Result |"
+            echo "|---|---|"
+            echo "| Unit | $(grep -h 'Tests ' unit.log | tail -n 1 | sed 's/ *Tests *//') |"
+            echo "| Worker (workerd) | $(grep -h 'Tests ' worker.log | tail -n 1 | sed 's/ *Tests *//') |"
+            echo
+            echo "### Coverage of the decision core"
+            echo
+            node scripts/coverage_summary.mjs
+            echo
+            echo "### Evaluation on the labelled cases"
+            echo
+            echo '```'
+            head -n 2 eval-dev.log
+            head -n 2 eval-heldout.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - run: npm run build:web
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Local secrets for wrangler dev
+        run: node scripts/dev_secrets.mjs
+      - name: Browser tests with axe-core, desktop and mobile
+        run: npx playwright test
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install codespell==2.4.1
+      - run: codespell --skip "*.jsonl,*.json,*.graphql,package-lock.json,./test/fixtures,./web/public/fonts,./data" --ignore-words-list "te,ue,oder,nd,ser,lien,juin,mot,deque,soleil,tempete,vague"
+      - run: python scripts/check_links.py
+      - run: python scripts/check_placeholders.py
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t still-true:demo .
+      - run: docker run -d --name demo -p 127.0.0.1:8788:8788 still-true:demo
+      - name: The API, the fire drill and the page answer
+        run: |
+          for i in $(seq 1 60); do curl -fs http://127.0.0.1:8788/api/health > /dev/null && break; sleep 2; done
+          curl -fs http://127.0.0.1:8788/api/health | grep -q '"ok":true'
+          curl -fs -X POST http://127.0.0.1:8788/api/drill -H 'content-type: application/json' -d '{"scenario":"paris-2026-11-13"}' | grep -q '"hold":1'
+          curl -fs http://127.0.0.1:8788/ | grep -q '<title>'
+      - if: failure()
+        run: docker logs demo

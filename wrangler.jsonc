@@ -23,4 +23,21 @@
     "BUFFER_REDIRECT_URI": "https://still-true.chatisthisreal.workers.dev/auth/callback",
   },
   "observability": { "enabled": true },
+  "env": {
+    // Browser tests and the no-key demo: no Workers AI binding (it always reaches Cloudflare's servers).
+    "e2e": {
+      "durable_objects": {
+        "bindings": [
+          { "name": "ORG", "class_name": "OrgDO" },
+          { "name": "WORLD", "class_name": "WorldDO" },
+        ],
+      },
+      "migrations": [{ "tag": "v1", "new_sqlite_classes": ["OrgDO", "WorldDO"] }],
+      "vars": {
+        "PUBLIC_ORIGIN": "http://127.0.0.1:8788",
+        "BUFFER_REDIRECT_URI": "http://127.0.0.1:8788/auth/callback",
+        "DEMO": "1",
+      },
+    },
+  },
 }

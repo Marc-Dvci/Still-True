@@ -10,3 +10,4 @@ playwright-report/
 eval/results/*.local.json
 .DS_Store
 .scratch/
+.dev.vars.*

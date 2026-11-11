@@ -1,0 +1,8 @@
+{
+  "name": "Still True",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:22",
+  "postCreateCommand": "npm ci && npx vite build && node scripts/dev_secrets.mjs",
+  "postAttachCommand": "npx wrangler dev --env e2e --ip 0.0.0.0 --port 8788",
+  "forwardPorts": [8788],
+  "portsAttributes": { "8788": { "label": "Still True", "onAutoForward": "openBrowser" } }
+}

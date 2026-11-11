@@ -1,0 +1,23 @@
+# A smoke test of the live deployment during judging, with its own badge; it also keeps the Worker warm.
+# It reads the live site and writes nothing to the repository. After the results date it ends at once.
+name: live
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */3 * * *"
+permissions:
+  contents: read
+env:
+  LIVE_URL: https://still-true.chatisthisreal.workers.dev
+  RESULTS_DATE: "2026-12-08"
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: The live site, the fire drill and the MCP endpoint answer
+        run: |
+          if [ "$(date -u +%F)" \> "$RESULTS_DATE" ]; then echo "Past the results date."; exit 0; fi
+          curl -fsS --retry 3 --retry-delay 20 --max-time 60 "$LIVE_URL/api/health" | grep -q '"ok":true'
+          curl -fsS --max-time 60 "$LIVE_URL/" | grep -q '<title>'
+          curl -fsS --max-time 60 -X POST "$LIVE_URL/api/drill" -H 'content-type: application/json' -d '{"scenario":"los-angeles-2025-01-08"}' | grep -q '"hold":2'
+          curl -fsS --max-time 60 -X POST "$LIVE_URL/mcp" -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | grep -q 'check_post'
