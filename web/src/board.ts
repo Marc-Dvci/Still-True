@@ -289,8 +289,16 @@ $("logout").addEventListener("click", async () => {
   location.href = "/";
 });
 
-renderScenarioPicker($("my-scenarios"), $("my-drill"), api.runMyDrill).catch(() => undefined);
+renderScenarioPicker($("my-scenarios"), $("my-drill"), api.runMyDrill, undefined, { hash: false }).catch(
+  () => undefined,
+);
 await refresh();
+// The note Still True leaves in Buffer links to /board#post-<id>: open that post and bring it into view.
+const linked = location.hash.startsWith("#post-") ? location.hash.slice("#post-".length) : null;
+if (linked && state !== null) {
+  render(new Set([linked]));
+  document.getElementById(`post-${linked}`)?.scrollIntoView({ block: "center" });
+}
 // Connecting starts a check in the background a moment later: show its result (and the channel list)
 // as soon as it lands instead of at the next minute.
 const justConnected = new URLSearchParams(location.search).has("connected");

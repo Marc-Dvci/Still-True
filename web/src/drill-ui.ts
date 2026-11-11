@@ -34,6 +34,8 @@ export async function renderScenarioPicker(
   resultHost: HTMLElement,
   run: (id: string) => Promise<DrillResponse>,
   initial?: string,
+  /** The fire-drill page keeps the chosen day in the address; the board keeps its own (#post-…) links. */
+  options: { hash?: boolean } = {},
 ): Promise<void> {
   const { scenarios: all } = await scenarios();
   const buttons: HTMLButtonElement[] = [];
@@ -42,7 +44,7 @@ export async function renderScenarioPicker(
     resultHost.replaceChildren(el("p", { class: "muted" }, "Replaying…"));
     try {
       renderDrill(resultHost, await run(id));
-      history.replaceState(null, "", `${location.pathname}#${id}`);
+      if (options.hash !== false) history.replaceState(null, "", `${location.pathname}#${id}`);
     } catch (error) {
       resultHost.replaceChildren();
       toast((error as Error).message);
@@ -73,7 +75,7 @@ export async function renderScenarioPicker(
     buttons.push(button);
     listHost.append(el("li", {}, button));
   }
-  const wanted = initial ?? location.hash.slice(1);
+  const wanted = initial ?? (options.hash !== false ? location.hash.slice(1) : "");
   const index = Math.max(
     0,
     all.findIndex((s) => s.id === wanted),
