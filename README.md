@@ -7,7 +7,7 @@
   <a href="https://github.com/Marc-Dvci/Still-True/actions/workflows/live.yml"><img alt="live" src="https://github.com/Marc-Dvci/Still-True/actions/workflows/live.yml/badge.svg"></a>
   <a href="https://github.com/Marc-Dvci/Still-True/actions/workflows/codeql.yml"><img alt="CodeQL" src="https://github.com/Marc-Dvci/Still-True/actions/workflows/codeql.yml/badge.svg"></a>
   <img alt="tests" src="https://img.shields.io/badge/tests-230_passing-111111">
-  <img alt="decision core coverage" src="https://img.shields.io/badge/decision_core-99.4%25_lines_·_85.0%25_branches-111111">
+  <img alt="decision core coverage" src="https://img.shields.io/badge/decision_core-99.4%25_lines_·_85.5%25_branches-111111">
   <a href="LICENSE"><img alt="MIT licence" src="https://img.shields.io/badge/licence-MIT-111111"></a>
 </p>
 
@@ -39,6 +39,9 @@
 | A product page that changed | A forecast that changed | A day of remembrance |
 |---|---|---|
 | <img src="docs/screens/finding-out-of-stock.png" alt="Held: the linked product page says the linen shirt is out of stock" width="280"> | <img src="docs/screens/finding-weather.png" alt="Review: 'La terrasse est ouverte' goes out into recorded rain over Strasbourg" width="280"> | <img src="docs/screens/finding-remembrance.png" alt="Review: a flash sale in Paris on 13 November, the anniversary of the 2015 attacks" width="280"> |
+
+<p align="center"><img src="docs/screens/buffer-held-and-noted.png" alt="Inside Buffer, on a real Mastodon channel connected through Still True's OAuth App Client: the post is in Drafts with the red 'Still True: held' tag, and Buffer's Notes panel shows Still True's note: the product is out of stock, with a link to review, fix or release it" width="640"></p>
+<p align="center"><sub>Inside Buffer, after the live app's first check through OAuth: the post waits in Drafts with the "Still True: held" tag, and the note says why. The note's link opens that post on the board.</sub></p>
 
 ## The problem
 
@@ -112,7 +115,7 @@ Every operation is validated against [`schema/buffer.graphql`](schema/buffer.gra
 | Measure | Result | Reproduce |
 |---|---|---|
 | Labelled cases, written and committed before the detectors | 267 development cases, 143 held-out cases (191 healthy in total): every verdict and every finding code matches the written rules; 0 healthy posts held or flagged | `npm run eval` and `npm run eval -- heldout` · [`docs/EVALUATION.md`](docs/EVALUATION.md) |
-| Live Buffer API | On a real Mastodon channel: a scheduled post linking an out-of-stock product was moved to drafts with the "Still True: held" tag and a note inside Buffer in 1.4 s, released at its exact original time, and a wrong weekday fixed in Buffer; Buffer's responses recorded as fixtures | `BUFFER_API_KEY=... npx tsx scripts/live_check.ts <channel>` · [`docs/LIVE.md`](docs/LIVE.md) |
+| Live Buffer API | Through the live app and its OAuth App Client (11 Nov 2026): connected a real account; the first check, 7 Buffer requests, moved a scheduled post linking an out-of-stock product to drafts with the "Still True: held" tag and a note; "Release as written" on the live board put it back at its exact original time without the tag. With the local Worker on the same channel: the weekday fix and the five sample drafts; Buffer's responses recorded as fixtures | `BUFFER_API_KEY=... npx tsx scripts/live_check.ts <channel>` · [`docs/LIVE.md`](docs/LIVE.md) |
 | Real markup | Prices, stock and event status read correctly from Shopify, WooCommerce, Wix and ticketing-site markup, including a malformed JSON-LD block and an event postponed only in its title | [`test/unit/page.test.ts`](test/unit/page.test.ts) |
 | Real days | The five drills above, on the recorded GDACS, Wikipedia and Open-Meteo data | [`test/unit/drill.test.ts`](test/unit/drill.test.ts) |
 | Buffer contract | 13 operations valid against the introspected schema | [`test/unit/operations.test.ts`](test/unit/operations.test.ts) |
