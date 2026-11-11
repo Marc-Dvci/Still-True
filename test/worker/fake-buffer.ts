@@ -82,7 +82,16 @@ export function fakeBuffer(
           });
         }
         const data = answer(operation, variables, fake, options);
-        return Response.json({ data }, { headers: { RateLimit: "limit=100, remaining=90, reset=600" } });
+        return Response.json(
+          { data },
+          // Buffer's own form (recorded 11 Nov 2026): one member per window.
+          {
+            headers: {
+              RateLimit: '"15m"; r=90; t=600, "24h"; r=500; t=80000, "30d"; r=900; t=2500000',
+              "RateLimit-Policy": '"15m"; q=150; w=900, "24h"; q=600; w=86400, "30d"; q=1000; w=2592000',
+            },
+          },
+        );
       }
       if (url.startsWith("https://www.gdacs.org/") || url.startsWith("https://en.wikipedia.org/")) {
         if (options.world === "down") return new Response("unavailable", { status: 503 });

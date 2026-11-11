@@ -196,7 +196,27 @@ describe("Buffer API client", () => {
     expect((error as BufferApiError).code).toBe("BAD_USER_INPUT");
   });
 
-  it("reads RateLimit headers in both forms", () => {
+  it("reads Buffer's RateLimit headers and keeps the window with the fewest requests left", () => {
+    // Recorded from api.buffer.com, 11 Nov 2026.
+    const headers = new Headers({
+      RateLimit: '"15m"; r=87; t=650, "24h"; r=262; t=70249, "30d"; r=662; t=2575849',
+      "RateLimit-Policy":
+        '"15m"; q=150; w=900; pk=:NTc0:, "24h"; q=600; w=86400; pk=:NTc0:, "30d"; q=1000; w=2592000; pk=:NTc0:',
+      "X-RateLimit-Remaining": "662",
+      "X-RateLimit-Reset": "1796988930",
+    });
+    expect(parseRateBudget(headers, 1)).toEqual({
+      remaining: 87,
+      limit: 150,
+      resetSeconds: 650,
+      observedAt: 1,
+      window: "15m",
+    });
+    const nearDailyLimit = new Headers({ RateLimit: '"15m"; r=140; t=600, "24h"; r=12; t=9000' });
+    expect(parseRateBudget(nearDailyLimit, 1)).toMatchObject({ remaining: 12, window: "24h", limit: null });
+  });
+
+  it("reads RateLimit headers in other forms", () => {
     expect(parseRateBudget(new Headers({ RateLimit: "limit=100, remaining=7, reset=60" }), 1)).toMatchObject({
       limit: 100,
       remaining: 7,

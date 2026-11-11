@@ -35,6 +35,8 @@ export interface RateBudget {
   limit: number | null;
   resetSeconds: number | null;
   observedAt: number;
+  /** The window the numbers belong to ("15m", "24h", "30d"), when Buffer names it. */
+  window?: string;
 }
 
 export interface BufferClientOptions {
@@ -46,8 +48,33 @@ export interface BufferClientOptions {
 }
 
 export function parseRateBudget(headers: Headers, now: number): RateBudget {
-  // Buffer sends `RateLimit: limit=100, remaining=97, reset=812` (structured field) or separate headers.
+  // Buffer (recorded 11 Nov 2026) names one member per window:
+  //   RateLimit: "15m"; r=87; t=650, "24h"; r=262; t=70249, "30d"; r=662; t=2575849
+  //   RateLimit-Policy: "15m"; q=150; w=900, "24h"; q=600; w=86400, "30d"; q=1000; w=2592000
+  // The budget that matters is the window with the fewest requests left.
   const combined = headers.get("ratelimit");
+  if (combined && /\br=\d+/.test(combined)) {
+    const quotas = new Map<string, number>();
+    for (const m of (headers.get("ratelimit-policy") ?? "").matchAll(/"([^"]+)"[^,]*?\bq=(\d+)/g)) {
+      quotas.set(m[1] as string, Number(m[2]));
+    }
+    let tightest: RateBudget | null = null;
+    for (const m of combined.matchAll(/"([^"]+)"[^,]*?\br=(\d+)(?:[^,]*?\bt=(\d+))?/g)) {
+      const remaining = Number(m[2]);
+      if (tightest === null || remaining < (tightest.remaining ?? Infinity)) {
+        const window = m[1] as string;
+        tightest = {
+          remaining,
+          limit: quotas.get(window) ?? null,
+          resetSeconds: m[3] ? Number(m[3]) : null,
+          observedAt: now,
+          window,
+        };
+      }
+    }
+    if (tightest) return tightest;
+  }
+  // Other forms: `RateLimit: limit=100, remaining=97, reset=812`, or separate headers.
   const read = (key: string): number | null => {
     if (combined) {
       const match = new RegExp(`${key}=(\\d+)`).exec(combined);
